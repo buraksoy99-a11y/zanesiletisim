@@ -1,41 +1,43 @@
 # zanesiletisim.info — Zanes İletişim Kurumsal Web Sitesi
 
 ## Proje Özeti
-Zanes İletişim'in (Vodafone yetkili bayisi) kurumsal tanıtım sitesi. Tek sayfalık statik HTML, İstanbul'daki 6 mağazayı tanıtır.
+Zanes İletişim'in (Vodafone Business Partner) kurumsal tanıtım sitesi. 16 Eylül 2026'da onaylanan React tasarımı, İstanbul'daki 6 lokasyonu tanıtır. Geliştirme/yayın ayrıntıları README.md içindedir.
 
 ## Teknik Stack
 | Karar | Değer |
 |-------|-------|
-| Dosya | Tek `index.html` (single-page, scroll) |
-| CSS | Tailwind CDN (`cdn.tailwindcss.com`) |
-| İkonlar | Material Symbols Outlined (Google Fonts) |
-| Font | Inter (Google Fonts) |
-| Deploy | Cloudflare Pages (statik, build step yok) |
+| Kaynak | `src/App.jsx`, tek sayfalık React |
+| CSS | Yerel `src/style.css`, harici CDN yok |
+| İkonlar | Yerel SVG bileşenleri |
+| Font | Yerel DM Sans |
+| Deploy | esbuild + React prerender → Cloudflare Pages `dist/` |
 | Domain | `zanesiletisim.info` (Cloudflare DNS, CNAME → `zanesiletisim.pages.dev`) |
 | GitHub | `buraksoy99-a11y/zanesiletisim` |
 
 ## Dosya Yapısı
 ```
-index.html      — Tüm site (navbar, hero, hizmetler, mağazalar, neden biz, footer)
+src/            — React bileşenleri, stiller, mağaza verisi ve hareketler
+index.html      — Üretim metadatası ve HTML şablonu
+build.cjs       — Statik HTML + hashli JS/CSS üretimi
+dist/           — Yalnız bu klasör yayınlanır (Git dışı)
 favicon.svg     — Kırmızı "Z" lettermark SVG favicon
 robots.txt      — Search engine crawl directives
 sitemap.xml     — Basit sitemap (tek URL)
 ```
 
 ## Renk Paleti (Vodafone kırmızı — bayi uyumu)
-- Primary: `#b70100` (koyu kırmızı)
-- Primary container: `#e60000` (parlak kırmızı)
-- Background: `#f9f9f9`
-- Text: `#1a1c1c`
+- Primary: `#e60000` (Vodafone kırmızısı)
+- Background: `#f5f5f5`
+- Text: `#171717`; nötr siyah/beyaz/gri
 - Light theme
 
 ## Site Bölümleri
-1. **Navbar** — Glassmorphic, anchor linkler, hamburger menü (mobil)
-2. **Hero** — "Vodafone Yetkili Bayi" badge, "Teknolojiye Güvenle Ulaşın" başlık
-3. **Hizmetler Bento** — Akıllı Telefon Satışı (2/3) + Aksesuar (1/3)
-4. **Mağazalarımız** — 6 kart, 3x2 grid (gerçek adresler + saatler)
-5. **Neden Zanes?** — Trust signals (10+ Yıl, 6 Mağaza, Vodafone Yetkili)
-6. **Footer** — 4 sütun, iletişim bilgileri, KVKK
+1. **Üst menü** — Kırmızı logo, sabit gezinme, mobil disclosure menüsü
+2. **Hero** — Vodafone Business Partner, onaylanan telefon illüstrasyonu
+3. **Hizmetler** — Telefon, aksesuar ve Vodafone işlemleri
+4. **Hakkımızda** — 25 yıllık deneyim, 06 lokasyon
+5. **Mağazalarımız** — Korunan altı adres ve harita bağlantısı
+6. **İletişim** — Telefon, e-posta, adres; hover/odak okları
 
 ## Mağazalar
 | Site Adı | Ambar Kodu | Saat |
@@ -53,13 +55,15 @@ sitemap.xml     — Basit sitemap (tek URL)
 
 ## Deploy
 ```bash
-cd ~/AutomationLocal/zanesiletisim
-npx wrangler pages deploy . --project-name zanesiletisim --branch main
+npm ci
+npm run build
+npm test
+npx wrangler@4.132.0 pages deploy dist --project-name zanesiletisim --branch main
 ```
 
 ## Kurallar
 - **Türkçe karakterler zorunlu** (ş, ç, ğ, ı, ö, ü) tüm UI text'lerinde
-- **Tailwind CDN** — build step yok, `index.html` doğrudan serve edilir
-- **Harici görsel yok** — placeholder'lar CSS gradient ile yapılmış
+- **Build zorunlu** — yalnız `dist/` yayınlanır; kök şablon veya kaynak klasörü yayınlanmaz. Onaylı tasarım korunur.
+- **Harici görsel yok** — onaylı dekoratif CSS/SVG çizimleri ve yerel fontlar kullanılır.
 - **Teknik servis/tamir yok** — hizmetlerde sadece telefon satışı ve aksesuar
 - **Tarife/paket bilgisi yok** — Vodafone'un işi, bayinin değil

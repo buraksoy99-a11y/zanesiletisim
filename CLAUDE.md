@@ -1,7 +1,7 @@
 # zanesiletisim.info — Zanes İletişim Kurumsal Web Sitesi
 
 ## Proje Özeti
-Zanes İletişim'in (Vodafone Business Partner) kurumsal tanıtım sitesi. 16 Eylül 2026'da onaylanan React tasarımı, İstanbul'daki 6 lokasyonu tanıtır. Geliştirme/yayın ayrıntıları README.md içindedir.
+Zanes İletişim'in (Vodafone Business Partner) kurumsal tanıtım sitesi. "İki yaka" hat tasarımı (Eylül 2026, 16 Eylül GPT tasarımının yerine), İstanbul'daki 6 mağazayı tanıtır. Geliştirme/yayın ayrıntıları README.md içindedir.
 
 ## Teknik Stack
 | Karar | Değer |
@@ -32,12 +32,12 @@ sitemap.xml     — Basit sitemap (tek URL)
 - Light theme
 
 ## Site Bölümleri
-1. **Üst menü** — Kırmızı logo, sabit gezinme, mobil disclosure menüsü
-2. **Hero** — Vodafone Business Partner, onaylanan telefon illüstrasyonu
-3. **Hizmetler** — Telefon, aksesuar ve Vodafone işlemleri
-4. **Hakkımızda** — 25 yıllık deneyim, 06 lokasyon
-5. **Mağazalarımız** — Korunan altı adres ve harita bağlantısı
-6. **İletişim** — Telefon, e-posta, adres; hover/odak okları
+1. **Üst menü** — Rounded-Z işareti, masaüstünde 4 bağlantı + telefon düğmesi; telefonda yalnız "Ara" düğmesi (hamburger yok)
+2. **Hero** — "İki yaka, altı mağaza." + "En yakın mağazayı bul" (konum yalnız tarayıcıda hesaplanır, dışarı gönderilmez)
+3. **Mağazalarımız (hat)** — Mağazalar metro hat şeridi gibi tek kırmızı hatta durak; Boğaz'ı köprüyle geçer. 1180px altında dikey hat. Canlı açık/kapalı durumu İstanbul saatiyle hesaplanır (saatler her gün geçerli varsayılır)
+4. **Hizmetler** — Telefon, aksesuar ve Vodafone işlemleri
+5. **Hakkımızda** — 25 yıllık deneyim, Vodafone Business Partner, 4 Avrupa + 2 Anadolu mağazası
+6. **İletişim** — Kırmızı bant, büyük telefon numarası, e-posta, adres
 
 ## Mağazalar
 | Site Adı | Ambar Kodu | Saat |
@@ -64,6 +64,7 @@ npx wrangler@4.132.0 pages deploy dist --project-name zanesiletisim --branch mai
 ## Kurallar
 - **Türkçe karakterler zorunlu** (ş, ç, ğ, ı, ö, ü) tüm UI text'lerinde
 - **Build zorunlu** — yalnız `dist/` yayınlanır; kök şablon veya kaynak klasörü yayınlanmaz. Onaylı tasarım korunur.
-- **Harici görsel yok** — onaylı dekoratif CSS/SVG çizimleri ve yerel fontlar kullanılır.
+- **Harici görsel yok** — CSS/SVG çizimleri ve yerel DM Sans kullanılır.
+- **Mağaza verisi tek yerde** — `src/stores.js` (hat sırası, saatler, yaklaşık koordinat, harita hedefi). Harita linkleri `tests/map-links.json` ile korunur.
 - **Teknik servis/tamir yok** — hizmetlerde sadece telefon satışı ve aksesuar
 - **Tarife/paket bilgisi yok** — Vodafone'un işi, bayinin değil

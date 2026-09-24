@@ -85,7 +85,7 @@ async function statusesAt(browser, utc, errors) {
     const page=await browser.newPage({viewport:{width:1440,height:1000}});
     watchErrors(page,errors);
     await page.emulateMedia({reducedMotion:'reduce'});
-    for (const width of [320,360,390,430,768,900,901,1024,1179,1180,1280,1440,1920]) {
+    for (const width of [320,360,390,430,761,768,900,901,960,961,1024,1179,1180,1280,1440,1920]) {
       await page.setViewportSize({width,height:1000});
       await page.goto(base);
       await settle(page);

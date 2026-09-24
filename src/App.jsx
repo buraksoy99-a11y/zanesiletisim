@@ -1,148 +1,164 @@
-import React, {useEffect, useRef, useState} from 'react';
-import {stores} from './stores';
-import Icon, {ConnectionMark} from './Icon';
-import useMotion from './useMotion';
+import React, {useState} from 'react';
+import {stores, sides, contact} from './stores';
+import Icon, {ZMark} from './Icon';
+import {useIstanbulMinutes, storeStatus, summary, distanceKm, formatDistance} from './hours';
+
+const navigation = [['#magazalar', 'Mağazalar'], ['#hizmetler', 'Hizmetler'], ['#hakkimizda', 'Hakkımızda'], ['#iletisim', 'İletişim']];
 
 function Brand() {
-  return <a className="brand" href="#" aria-label="Zanes İletişim ana sayfa"><span className="brand-name">zanes<span className="brand-dot">.</span></span><span className="brand-descriptor">iletişim</span></a>;
+  return <a className="brand" href="#" aria-label="Zanes İletişim ana sayfa"><ZMark /><span>Zanes İletişim</span></a>;
 }
 
-const navigation = [['#hizmetler','Hizmetlerimiz'],['#hakkimizda','Biz kimiz?'],['#magazalar','Mağazalarımız']];
-
 function Header() {
-  const [open, setOpen] = useState(false);
-  const [active, setActive] = useState('');
-  const toggleRef = useRef(null);
-  const headerRef = useRef(null);
-  useEffect(() => {
-    const onKey = event => {
-      if (event.key === 'Escape' && open) { setOpen(false); toggleRef.current?.focus(); }
-    };
-    const onClick = event => { if (!headerRef.current?.contains(event.target)) setOpen(false); };
-    const media = matchMedia('(min-width: 901px)');
-    const onResize = event => { if (event.matches) setOpen(false); };
-    document.addEventListener('keydown', onKey);
-    document.addEventListener('click', onClick);
-    media.addEventListener('change', onResize);
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.removeEventListener('click', onClick);
-      media.removeEventListener('change', onResize);
-    };
-  }, [open]);
-  useEffect(() => {
-    if (!('IntersectionObserver' in window)) return;
-    const observer = new IntersectionObserver(entries => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) setActive(entry.target.id ? `#${entry.target.id}` : '');
-      });
-    }, {rootMargin:'-15% 0px -60% 0px', threshold:0});
-    document.querySelectorAll('.hero, main > section[id]').forEach(section => observer.observe(section));
-    return () => observer.disconnect();
-  }, []);
-  const navigate = event => {
-    setOpen(false);
-    const target = document.querySelector(event.currentTarget.hash);
-    if (target) { target.tabIndex = -1; target.focus({preventScroll:true}); }
-  };
-  return <header className="header" ref={headerRef} onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}>
-    <Brand />
-    <nav className="desktop-nav" aria-label="Ana gezinme">{navigation.map(([href,label]) => <a key={href} href={href} aria-current={active === href ? 'location' : undefined}>{label}{href === '#magazalar' && <span className="nav-count">06</span>}</a>)}</nav>
-    <a className="header-contact" href="#iletisim">Bize ulaşın</a>
-    <button className="menu-toggle" ref={toggleRef} aria-expanded={open} aria-controls="mobile-menu" aria-label={open ? 'Menüyü kapat' : 'Menüyü aç'} onClick={() => setOpen(value => !value)}>
-      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 8h18"/><path d="M3 16h18"/></svg>
-    </button>
-    <nav id="mobile-menu" className={open ? 'open' : ''} aria-label="Mobil gezinme" inert={!open}>
-      {[...navigation,['#iletisim','Bize ulaşın']].map(([href,label],index) => <a href={href} key={href} tabIndex={0} onClick={navigate} style={{'--i':index}}>{label}<Icon /></a>)}
-      <a href="tel:+905453636464" className="menu-phone" tabIndex={0} onClick={() => setOpen(false)}><Icon name="phone"/>0545 363 64 64</a>
-    </nav>
-    <div className="reading-progress" aria-hidden="true" />
+  return <header className="header">
+    <div className="wrap header-inner">
+      <Brand />
+      <nav className="nav" aria-label="Ana gezinme">{navigation.map(([href, label]) => <a key={href} href={href}>{label}</a>)}</nav>
+      <a className="call" href={contact.phoneHref}><Icon name="phone" /><span className="call-long">{contact.phone}</span><span className="call-short">Ara</span></a>
+    </div>
   </header>;
 }
 
-function PhoneArtwork() {
-  return <div className="hero-art" data-enter="art" role="img" aria-label="Kırmızı ve siyah yörüngelerle çevrili telefon illüstrasyonu">
-    <div className="art-top"><span>BAĞLANTI GÜZEL ŞEY.</span><Icon name="plus"/></div>
-    <div className="orbit-system"><div className="orbit orbit-one"/><div className="orbit orbit-two"/><div className="orbit orbit-three"/><span className="orbit-dot"/></div>
-    <div className="phone-shadow"/>
-    <div className="phone-stage"><div className="phone"><div className="phone-screen">
-      <div className="island"/><div className="screen-top"><span>09:41</span><div><Icon name="signal"/><Icon name="battery"/></div></div>
-      <div className="screen-copy">Hayata<br/><strong>bağlı kal.</strong></div>
-      <div className="screen-rings"><i/><i/><i/></div>
-      <div className="screen-bottom"><span>zanes.</span><Icon /></div><div className="home-indicator"/>
-    </div></div></div>
-    <div className="art-label label-one"><span className="mini-mark"><Icon name="check"/></span><div>Güvenilir Hizmet</div></div>
-    <div className="art-label label-two"><Icon name="pin"/><div><strong>6 mağaza</strong></div></div>
-  </div>;
+const geoMessages = {
+  loading: 'Konumunuz alınıyor…',
+  denied: 'Konum izni kapalı. Tarayıcı ayarlarından izin verip tekrar deneyin ya da aşağıdaki listeden seçin.',
+  failed: 'Konumunuz bulunamadı. Aşağıdaki listeden size uygun mağazayı seçebilirsiniz.',
+};
+
+function useNearestStore() {
+  const [geo, setGeo] = useState({state:'idle'});
+  const locate = event => {
+    // Without geolocation the link simply scrolls to the store list.
+    if (!('geolocation' in navigator)) return;
+    event.preventDefault();
+    setGeo({state:'loading'});
+    navigator.geolocation.getCurrentPosition(position => {
+      const here = {lat:position.coords.latitude, lng:position.coords.longitude};
+      const [nearest] = stores.map(store => ({store, km:distanceKm(here, store)})).sort((a, b) => a.km - b.km);
+      setGeo({state:'done', id:nearest.store.id, text:`Size en yakın mağaza ${nearest.store.short}, yaklaşık ${formatDistance(nearest.km)}.`});
+      const target = document.getElementById(`magaza-${nearest.store.id}`);
+      if (target) {
+        const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        target.scrollIntoView({behavior:reduce ? 'auto' : 'smooth', block:'center'});
+        target.focus({preventScroll:true});
+      }
+    }, error => setGeo({state:error.code === 1 ? 'denied' : 'failed'}), {timeout:10000, maximumAge:300000});
+  };
+  const message = geo.state === 'done' ? geo.text : geoMessages[geo.state] || '';
+  return {nearestId:geo.state === 'done' ? geo.id : null, busy:geo.state === 'loading', message, locate};
 }
 
-function Hero() {
+function Hero({finder}) {
   return <section className="hero" aria-labelledby="hero-title">
-    <div className="hero-copy">
-      <div className="eyebrow" data-enter="eyebrow"><span className="signal-dot"/>Vodafone Business Partner</div>
-      <h1 id="hero-title"><span className="line-mask"><span>Teknolojiye</span></span><span className="line-mask"><span>güvenle</span></span><span className="line-mask red"><span>ulaşın.<Icon className="hero-arrow"/></span></span></h1>
-      <p data-enter="copy">İstanbul'un en değerli lokasyonlarında olan mağazalarımıza sizleri bekliyoruz</p>
-      <div className="hero-foot" data-enter="actions"><span><Icon name="pin"/>İSTANBUL, TÜRKİYE</span><span>HER ZAMAN BAĞLANTIDA<span className="signal-dot"/></span></div>
+    <div className="wrap hero-grid">
+      <h1 id="hero-title"><span>İki yaka,</span> <span>altı mağaza.</span></h1>
+      <div className="hero-side">
+        <p className="lede">Zanes İletişim bir Vodafone Business Partner. Telefon, aksesuar ve tüm Vodafone işlemleriniz için size en yakın mağazamıza uğrayın.</p>
+        <div className="actions">
+          <a className="btn btn-primary" href="#magazalar" onClick={finder.locate} aria-busy={finder.busy}><Icon name="locate" />En yakın mağazayı bul</a>
+          <a className="btn" href={contact.phoneHref}><Icon name="phone" />Bizi arayın</a>
+        </div>
+        <p className="geo-message" role="status">{finder.message}</p>
+      </div>
     </div>
-    <PhoneArtwork />
   </section>;
 }
 
-function SectionHeading({number,label,id,first,second}) {
-  return <div className="section-heading"><span className="eyebrow" data-reveal>{number} — {label}</span><h2 id={id} data-reveal><span className="heading-line">{first}</span><span className="heading-line muted">{second}</span></h2></div>;
+function Station({store, index, now, nearest}) {
+  const status = now === null ? null : storeStatus(store, now);
+  return <li className={`station${nearest ? ' is-nearest' : ''}`} id={`magaza-${store.id}`} tabIndex={-1} style={{'--i':index}}>
+    <span className="marker" aria-hidden="true" />
+    <h3>{store.short}</h3>
+    {nearest && <span className="nearest-tag">Size en yakın</span>}
+    <p className={`status${status ? (status.open ? ' is-open' : ' is-closed') : ''}`}>{status ? status.text : '\u00a0'}</p>
+    <p className="hours">{store.open} – {store.close}</p>
+    <address>{store.street}<br />{store.area}</address>
+    <a className="directions" href={`https://www.google.com/maps/dir/?api=1&destination=${store.maps}`} target="_blank" rel="noopener noreferrer" aria-label={`${store.name} için yol tarifi (yeni sekmede açılır)`}>Yol tarifi<Icon name="external" /></a>
+  </li>;
 }
 
+function Line({nearestId}) {
+  const now = useIstanbulMinutes();
+  return <section className="lines" id="magazalar" aria-labelledby="stores-title">
+    <div className="wrap">
+      <h2 id="stores-title" className="sr-only">Mağazalarımız</h2>
+      <p className="hat-caption">{now === null ? 'Mağazalarımız ve çalışma saatleri' : summary(now)}</p>
+      <div className="hat">
+        {sides.map(side => {
+          const group = stores.filter(store => store.side === side.id);
+          return <React.Fragment key={side.id}>
+            {side.id === 'anadolu' && <div className="strait" aria-hidden="true"><span>İstanbul Boğazı</span></div>}
+            <div className={`yaka ${side.id}`}>
+              <p className="yaka-name" id={`yaka-${side.id}`}>{side.label}</p>
+              <ol aria-labelledby={`yaka-${side.id}`} style={{'--n':group.length}}>
+                {group.map(store => <Station key={store.id} store={store} index={stores.indexOf(store)} now={now} nearest={store.id === nearestId} />)}
+              </ol>
+            </div>
+          </React.Fragment>;
+        })}
+      </div>
+    </div>
+  </section>;
+}
+
+const services = [
+  ['Telefon', '5G uyumlu telefonları nakit ya da temlikli, yani Vodafone faturanıza taksitli olarak alın.'],
+  ['Aksesuar', 'Kılıf, ekran koruyucu, şarj aleti ve kulaklık. Arıza oranı düşük ürünleri seçiyoruz.'],
+  ['Vodafone işlemleri', 'Yeni hat, numara taşıma, ev interneti ve fatura işlemleri. Mağazaya uğrayın ya da önce bizi arayın.'],
+];
+
 function Services() {
-  return <section className="services section" id="hizmetler" aria-labelledby="services-title">
-    <SectionHeading number="01" label="Hizmetlerimiz" id="services-title" first="Günlük hayatınıza" second="iyi gelen teknoloji."/>
-    <div className="service-grid">
-      <div className="card-reveal" data-reveal style={{'--delay':'0ms'}}><a className="service-card phones" href="#magazalar"><div className="card-top"><span>01 / AKILLI TELEFON</span><span className="round-arrow"><Icon /></span></div><div className="product-visual" aria-hidden="true"><div className="mini-phones"><div className="device-back"><div className="lenses"><i/><i/><i/></div><span className="device-mark">z.</span></div><div className="device-front"><i/><div/></div></div></div><div className="card-copy"><h3>Sıradaki telefonunuz<br/>burada.</h3><p>5G Uyumlu telefon modellerini temlikli veya ayrıcalıklı nakit seçenekleriyle alın.</p><span className="card-link">Mağazalarımızda keşfedin <Icon name="right"/></span></div></a></div>
-      <div className="card-reveal" data-reveal style={{'--delay':'110ms'}}><a className="service-card accessories" href="#magazalar"><div className="card-top"><span>02 / AKSESUAR</span><span className="round-arrow"><Icon /></span></div><div className="product-visual" aria-hidden="true"><div className="headphones"><div className="headband"/><div className="ear left"/><div className="ear right"/></div></div><div className="card-copy"><h3>Güvenle alabileceğiniz aksesuarlar</h3><p>En düşük arıza oranına sahip aksesuar ürünleriyle güvenli alışveriş</p><span className="card-link">Tarzınızı tamamlayın <Icon name="right"/></span></div></a></div>
-      <div className="card-reveal" data-reveal style={{'--delay':'220ms'}}><a className="service-card vodafone" href="#iletisim"><div className="card-top"><span>03 / VODAFONE</span><span className="round-arrow"><Icon /></span></div><div className="product-visual" aria-hidden="true"><div className="service-connection"><ConnectionMark /></div></div><div className="card-copy"><h3>Her işlem için tek noktanız</h3><p>Aklınıza gelebilecek her işlem için etkin iletişimle hızlı çözüm desteğimiz sizin için her zaman hazır.</p><span className="card-link">Bizimle iletişime geçin <Icon name="right"/></span></div></a></div>
+  return <section className="section services" id="hizmetler" aria-labelledby="services-title">
+    <div className="wrap split">
+      <h2 id="services-title">Mağazada neler var?</h2>
+      <ul className="service-list">{services.map(([title, text]) => <li key={title}><h3>{title}</h3><p>{text}</p></li>)}</ul>
     </div>
   </section>;
 }
 
 function About() {
-  return <section className="about section" id="hakkimizda" aria-labelledby="about-title">
-    <div className="about-kicker"><span className="eyebrow" data-reveal>02 — Zanes İletişim</span><div className="about-mark" data-reveal><ConnectionMark /></div></div>
-    <div className="about-body"><h2 id="about-title" data-reveal>Teknoloji değişir.<br/><span className="muted">Güven hep kalır.</span></h2><p data-reveal>Yılların deneyimi ve Vodafone’un güçlü altyapısıyla, teknoloji ihtiyaçlarınız için güvenilir çözüm ortağınızız.</p><div className="stats"><div data-reveal><strong>25</strong><span>yıllık sektör deneyimi</span></div><div data-reveal style={{'--delay':'90ms'}}><strong>06</strong><span>lokasyon</span></div><div className="authorized" data-reveal style={{'--delay':'180ms'}}><span className="verified-mark"><Icon name="check"/></span><strong>Vodafone</strong><span>Business Partner</span></div></div></div>
-  </section>;
-}
-
-function Stores() {
-  return <section className="stores section" id="magazalar" aria-labelledby="stores-title">
-    <SectionHeading number="03" label="Mağazalarımız" id="stores-title" first="Aynı şehirde." second="Yanıbaşınızda"/>
-    <div className="store-layout"><div className="store-intro"><div className="city-stamp" data-reveal><Icon name="pin"/><span>İSTANBUL</span><strong>06</strong><span>NOKTADA YANINIZDAYIZ</span></div><p data-reveal>Size en yakın mağazamıza uğrayın.<br/>Birlikte keşfedelim.</p><a className="text-link" href="tel:+905453636464" data-reveal><Icon name="phone"/>0545 363 64 64</a></div>
-      <div className="store-list" id="store-list">{stores.map((store,index) => <article className="store" key={store[0]} data-reveal style={{'--delay':`${index % 2 * 90}ms`}}>
-        <div className="store-top"><span className="store-pin"><Icon name="pin"/></span><span className="store-number">0{index+1}</span></div>
-        <h3>{store[0]}</h3><p>{store[1]}<br/>{store[2]}</p>
-        <div className="store-bottom"><span className="hours"><Icon name="clock"/>{store[3]}</span><a href={`https://www.google.com/maps/dir/?api=1&destination=${store[4]}`} target="_blank" rel="noopener noreferrer" aria-label={`${store[0]} için yol tarifi (yeni sekme)`}>Yol tarifi <Icon /></a></div>
-      </article>)}</div>
+  return <section className="section about" id="hakkimizda" aria-labelledby="about-title">
+    <div className="wrap">
+      <h2 id="about-title" className="statement">Çeyrek asırdır İstanbul’da telefon ve hat işindeyiz.</h2>
+      <p className="about-note">Zanes İletişim, 25 yıllık sektör deneyimine sahip bir Vodafone Business Partner. Avrupa Yakası’nda dört, Anadolu Yakası’nda iki mağazamız var.</p>
     </div>
   </section>;
 }
 
 function Contact() {
-  return <section className="contact section" id="iletisim" aria-labelledby="contact-title">
-    <div className="contact-top" data-reveal><span className="eyebrow">04 — İletişim</span><ConnectionMark /></div>
-    <div className="contact-main"><h2 id="contact-title" data-reveal>Ulaşın,<br/>yardımcı olalım</h2><a className="contact-arrow" href="tel:+905453636464" tabIndex={0} aria-label="Zanes İletişim’i arayın" data-reveal><Icon /></a></div>
-    <div className="contact-bottom"><a href="tel:+905453636464" tabIndex={0} data-reveal><span className="contact-label"><Icon name="phone"/>Bizi Arayın</span><span className="contact-value">0545 363 64 64 <Icon name="right" className="contact-value-arrow"/></span></a><a href="mailto:info@zanes.com.tr" tabIndex={0} data-reveal style={{'--delay':'90ms'}}><span className="contact-label"><Icon name="mail"/>Bize Yazın</span><span className="contact-value">info@zanes.com.tr <Icon name="right" className="contact-value-arrow"/></span></a><div className="contact-address" data-reveal style={{'--delay':'180ms'}}><span className="contact-label"><Icon name="pin"/>Adresimiz</span><p>Büyükdere Cad. Hürmet Keçeli İş Merkezi No:51<br/>Mecidiyeköy, Şişli / İstanbul</p></div></div>
+  return <section className="section contact" id="iletisim" aria-labelledby="contact-title">
+    <div className="wrap">
+      <h2 id="contact-title">Arayın, yardımcı olalım.</h2>
+      <a className="big-phone" href={contact.phoneHref} aria-label={`${contact.phone} numarasını arayın`}>{contact.phone}</a>
+      <dl className="contact-meta">
+        <div><dt>E-posta</dt><dd><a href={`mailto:${contact.email}`}>{contact.email}</a></dd></div>
+        <div><dt>Adres</dt><dd>{contact.address[0]}<br />{contact.address[1]}</dd></div>
+      </dl>
+    </div>
   </section>;
 }
 
 function Footer() {
-  return <footer><div className="footer-top"><Brand /><span>Teknolojiye güvenle ulaşın.</span><a className="text-link" href="#">Başa dön <Icon name="up"/></a></div><div className="footer-bottom"><span>© 2026 Zanes İletişim</span><span>Tüm hakları saklıdır.</span><span>İstanbul, Türkiye</span></div></footer>;
+  return <footer className="footer">
+    <div className="wrap footer-inner">
+      <Brand />
+      <p>Teknolojiye güvenle ulaşın.</p>
+      <p className="footer-legal">© 2026 Zanes İletişim. Tüm hakları saklıdır.</p>
+    </div>
+  </footer>;
 }
 
 export default function App() {
-  useMotion();
+  const finder = useNearestStore();
   return <>
     <a className="skip" href="#ana-icerik">İçeriğe geç</a>
     <Header />
     <main id="ana-icerik" tabIndex={-1}>
-      <Hero />
-      <Services /><About /><Stores /><Contact />
+      <Hero finder={finder} />
+      <Line nearestId={finder.nearestId} />
+      <Services />
+      <About />
+      <Contact />
     </main>
     <Footer />
   </>;

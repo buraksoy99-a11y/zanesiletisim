@@ -1,6 +1,6 @@
 # Zanes İletişim
 
-16 Eylül 2026'da onaylanan React tasarımı. Mevcut Cloudflare Pages projesi `zanesiletisim` ve alan adı `zanesiletisim.info` korunur. AutomationLocal backend'i veya diğer uygulamalar bu bağımsız deponun parçası değildir.
+"İki yaka" hat tasarımı (Eylül 2026). Mevcut Cloudflare Pages projesi `zanesiletisim` ve alan adı `zanesiletisim.info` korunur. AutomationLocal backend'i veya diğer uygulamalar bu bağımsız deponun parçası değildir.
 
 ## Geliştirme ve doğrulama
 
@@ -15,7 +15,7 @@ npm test
 - `index.html`: üretim metadatasını içeren HTML şablonu; doğrudan yayınlanmaz.
 - `build.cjs`: React içeriğini HTML'e önceden işler, istemciyi hydrate eder ve hashli JS/CSS üretir.
 - `dist/`: tek yayın çıktısı. Kaynak, testler, ekran görüntüleri ve source map içermez.
-- `verify.cjs`: kendi geçici loopback sunucusunu açar. İki tarayıcı motorunda 13 genişlik, 28 anotasyon, menü, klavye, dokunma, hover, reduced-motion, animasyon ve JavaScript olmadan içerik kontrollerini çalıştırır. `BASE_URL` verilirse aynı kontroller bu adrese yönelir. Sonuçlar `artifacts/` altında; Git'e girmez.
+- `verify.cjs`: kendi geçici loopback sunucusunu açar. İki tarayıcı motorunda (Chromium + WebKit) 13 genişlikte taşma/kırpılma ve hat hizası, sabit saatle canlı açık/kapalı durumu, sahte konumla en yakın mağaza, dokunma hedefleri, reduced-motion ve JavaScript olmadan içerik kontrollerini çalıştırır. `BASE_URL` verilirse aynı kontroller bu adrese yönelir. Sonuçlar `artifacts/` altında; Git'e girmez.
 - CI yalnız taslak PR hazır olduğunda veya elle başlatıldığında GitHub-hosted runner'da çalışır; hiçbir üretim sırrı istemez.
 
 ## Yayın
@@ -40,4 +40,4 @@ Wrangler oturumu süresi dolmuşsa kullanıcının kendi tarayıcısından giri�
 - Altı mağazanın adresleri, saatleri, telefon/e-posta ve harita hedefleri önceki siteden korunur.
 - Yerel önizleme ibaresi üretimde “Tüm hakları saklıdır.” olur; noindex kaldırılmış, canonical/robots/sitemap ve yapılandırılmış veri korunmuştur.
 - Cloudflare'ın e-posta gizleme işleminin React HTML'ini değiştirmemesi için kök `email_off` yorumlarıyla sarılır; alan adı genelindeki güvenlik ayarları değiştirilmez.
-- Onaylı görünüm, #E60000/siyah/gri palet ve hareketler değişmedi. Harici CDN, fotoğraf, izleme veya yeni form eklenmedi.
+- Palet #E60000 / siyah / beyaz + Boğaz mavisi. Tek hareket sayfa açılışında hattın çizilmesidir. Harici CDN, fotoğraf, izleme veya form yok.

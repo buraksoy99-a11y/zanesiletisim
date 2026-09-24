@@ -1,29 +1,19 @@
 import React from 'react';
 
 const paths = {
-  arrow: <><path d="M5 19 19 5M5 5h14v14" /></>,
-  right: <path d="M4 12h16m-7-7 7 7-7 7" />,
-  down: <path d="M12 4v16m-7-7 7 7 7-7" />,
-  up: <path d="M12 20V4m-7 7 7-7 7 7" />,
-  plus: <path d="M12 5v14M5 12h14" />,
-  pin: <><path d="M20 10c0 6-8 11-8 11S4 16 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></>,
-  clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
   phone: <path d="m7 3 3 5-2.5 2a15 15 0 0 0 6.5 6.5l2-2.5 5 3v2a2 2 0 0 1-2.2 2A19.5 19.5 0 0 1 3 5.2 2 2 0 0 1 5 3Z" />,
-  mail: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 6 9 7 9-7" /></>,
-  signal: <><path d="M4 20v-3m5 3v-7m5 7V9m5 11V4" /></>,
-  battery: <><rect x="2" y="7" width="17" height="10" rx="2" /><path d="M22 10v4M5 10v4m3-4v4m3-4v4m3-4v4" /></>,
-  check: <path d="m5 12 4 4L19 6" />,
+  locate: <><circle cx="12" cy="12" r="7" /><circle cx="12" cy="12" r="2.5" /><path d="M12 2v3m0 14v3M2 12h3m14 0h3" /></>,
+  external: <path d="M14 5h5v5m0-5-8 8m7 1v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4" />,
 };
 
-export default function Icon({name = 'arrow', className = '', ...props}) {
-  return <svg className={`icon ${className}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false" {...props}>{paths[name]}</svg>;
+export default function Icon({name, className = ''}) {
+  return <svg className={`icon ${className}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">{paths[name]}</svg>;
 }
 
-export function ConnectionMark({className = ''}) {
-  return <svg className={`connection-mark ${className}`} viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" focusable="false">
-    <circle cx="50" cy="50" r="9" />
-    <path d="M33 33a24 24 0 0 0 0 34m34-34a24 24 0 0 1 0 34" />
-    <path d="M22 22a40 40 0 0 0 0 56m56-56a40 40 0 0 1 0 56" />
-    <path d="M42 11a40 40 0 0 1 16 0m-16 78a40 40 0 0 0 16 0" />
+// Company "rounded-z" geometry (AutomationLocal brand/zanes-v1) on a red tile.
+export function ZMark({className = ''}) {
+  return <svg className={`zmark ${className}`} viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+    <rect width="64" height="64" rx="15" fill="#e60000" />
+    <path fill="#fff" d="M11 16Q11 13 14 13L50 13Q53 13 53 16L53 19.6Q53 22 51.08 23.44L30.92 38.56Q29 40 31.4 40L50 40Q53 40 53 43L53 48Q53 51 50 51L14 51Q11 51 11 48L11 44.4Q11 42 12.92 40.56L33.08 25.44Q35 24 32.6 24L14 24Q11 24 11 21Z" />
   </svg>;
 }

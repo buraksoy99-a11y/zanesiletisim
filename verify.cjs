@@ -96,14 +96,16 @@ async function statusesAt(browser, utc, errors) {
         const rail=getComputedStyle(document.querySelector('.hat'),'::before');
         const hat=document.querySelector('.hat').getBoundingClientRect();
         const h1=document.querySelector('h1').getBoundingClientRect(),side=document.querySelector('.hero-side').getBoundingClientRect();
-        return {width:innerWidth,scroll:document.documentElement.scrollWidth,clipped,
+        // Name the widest offenders so an overflow on another platform is diagnosable from the CI log.
+        const wide=[...document.querySelectorAll('body *')].filter(e=>e.getBoundingClientRect().right>innerWidth+.5&&!e.closest('.lines')).map(e=>`${e.tagName.toLowerCase()}.${e.className||''} right=${Math.round(e.getBoundingClientRect().right)}`).slice(0,8);
+        return {width:innerWidth,scroll:document.documentElement.scrollWidth,clipped,wide,
           brokenAnchors:[...document.querySelectorAll('a[href^="#"]')].filter(a=>a.hash&&!document.getElementById(a.hash.slice(1))).map(a=>a.hash),
           markerTops:[...new Set(markers.map(r=>Math.round(r.top)))],markerLefts:[...new Set(markers.map(r=>Math.round(r.left)))],
           markerCenterY:Math.round(markers[0].top+markers[0].height/2-hat.top),railCenterY:Math.round(parseFloat(rail.top)+parseFloat(rail.height)/2),
           railCenterX:Math.round(parseFloat(rail.left)+parseFloat(rail.width)/2),markerCenterX:Math.round(markers[0].left+markers[0].width/2-hat.left),
           statusTops:[...new Set(statuses)],heroOverlap:h1.right>side.left&&h1.bottom>side.top&&side.bottom>h1.top};
       });
-      assert.equal(geometry.width,geometry.scroll,`${name} document overflow at ${width}`);
+      assert.equal(geometry.width,geometry.scroll,`${name} document overflow at ${width}: ${geometry.wide.join(' | ')}`);
       assert.deepEqual(geometry.brokenAnchors,[]);
       assert.deepEqual(geometry.clipped,[],`${name} text/control clipping at ${width}`);
       assert.equal(geometry.heroOverlap,false,`${name} hero heading overlaps copy at ${width}`);

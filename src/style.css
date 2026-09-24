@@ -74,7 +74,7 @@ h1 span{display:block}
 .station:focus{outline:none}
 .station:hover .marker{background:var(--red)}
 .marker{position:absolute;z-index:2;top:0;left:0;width:var(--marker);height:var(--marker);border:5px solid var(--black);border-radius:50%;background:var(--white);animation:pop .5s var(--ease) backwards;animation-delay:calc(.3s + var(--i) * .17s);transition:background-color .25s,width .25s,height .25s,top .25s,left .25s}
-.station h3{font-size:clamp(20px,1.75vw,28px);line-height:1.1;font-weight:760;letter-spacing:-.03em}
+.station h3{font-size:clamp(20px,1.75vw,25px);line-height:1.1;font-weight:760;letter-spacing:-.03em}
 .status{display:flex;align-items:center;gap:8px;min-height:1.5em;margin-top:10px;font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
 .status.is-open:before,.status.is-closed:before{content:'';width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .status.is-open:before{background:var(--green)}
@@ -104,7 +104,7 @@ h2{font-size:clamp(34px,4.4vw,64px);line-height:1;font-weight:780;letter-spacing
 .contact{background:var(--red);color:var(--white)}
 .contact :focus-visible{outline-color:var(--white)}
 .contact h2{font-size:clamp(26px,2.6vw,38px);letter-spacing:-.03em}
-.big-phone{display:inline-block;margin-top:clamp(12px,1.5vw,20px);font-size:clamp(33px,12.6vw,164px);line-height:1;font-weight:800;letter-spacing:-.05em;font-variant-numeric:tabular-nums;text-decoration:none;white-space:nowrap}
+.big-phone{display:inline-block;margin-top:clamp(12px,1.5vw,20px);font-size:clamp(32px,12vw,160px);line-height:1;font-weight:800;letter-spacing:-.05em;font-variant-numeric:tabular-nums;text-decoration:none;white-space:nowrap}
 .big-phone:hover{text-decoration:underline;text-decoration-thickness:.05em;text-underline-offset:.1em}
 .contact-meta{display:flex;flex-wrap:wrap;gap:24px clamp(40px,6vw,96px);margin-top:clamp(36px,4vw,56px);font-size:18px}
 .contact-meta dt{font-size:15px;font-weight:700}

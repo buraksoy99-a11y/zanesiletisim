@@ -110,7 +110,7 @@ const services = [
 function Services() {
   return <section className="section services" id="hizmetler" aria-labelledby="services-title">
     <div className="wrap split">
-      <h2 id="services-title">Mağazalarımızda neler var?</h2>
+      <h2 id="services-title">Mağazada neler var?</h2>
       <ul className="service-list">{services.map(([title, text]) => <li key={title}><h3>{title}</h3><p>{text}</p></li>)}</ul>
     </div>
   </section>;

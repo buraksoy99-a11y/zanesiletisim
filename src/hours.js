@@ -38,13 +38,40 @@ export function storeStatus(store, now) {
   return {open:false, text:`Kapalı, açılış ${store.open}`};
 }
 
-export function summary(now) {
-  const time = `${pad(Math.floor(now / 60))}:${pad(now % 60)}`;
+export const clockDigits = now => `${pad(Math.floor(now / 60))}${pad(now % 60)}`;
+
+export function openSummary(now) {
   const openCount = stores.filter(store => storeStatus(store, now).open).length;
-  if (openCount === stores.length) return `İstanbul’da saat ${time}. Altı mağazamızın hepsi şu an açık.`;
-  if (openCount > 0) return `İstanbul’da saat ${time}. Altı mağazamızın ${countWords[openCount]} şu an açık.`;
+  if (openCount === stores.length) return 'Altı mağazamızın hepsi şu an açık.';
+  if (openCount > 0) return `Altı mağazamızın ${countWords[openCount]} şu an açık.`;
   const first = stores.map(store => store.open).sort()[0];
-  return `İstanbul’da saat ${time}. Mağazalarımız şu an kapalı, ilk açılış ${first}.`;
+  return `Mağazalarımız şu an kapalı, ilk açılış ${first}.`;
+}
+
+// Approximate Istanbul sunrise/sunset for the sky; it only has to feel right, not be astronomical.
+function sunTimes(date = new Date()) {
+  const local = new Date(date.getTime() + 180 * 60000);
+  const day = (local - Date.UTC(local.getUTCFullYear(), 0, 1)) / 86400000;
+  const halfDay = (12 + 2.95 * Math.sin(2 * Math.PI * (day - 80) / 365)) * 30 + 6;
+  return {rise:785 - halfDay, set:785 + halfDay};
+}
+
+export function skyPhase(now) {
+  if (now === null) return 'day';
+  const {rise, set} = sunTimes();
+  if (now < rise - 40 || now >= set + 40) return 'night';
+  if (now < rise + 35) return 'dawn';
+  if (now < set - 80) return 'day';
+  return 'dusk';
+}
+
+// Sun position in scene units along an arc from the European to the Anatolian horizon.
+export function sunPosition(now) {
+  if (now === null) return {x:1016, y:89, low:false};
+  const {rise, set} = sunTimes();
+  const t = (now - rise) / (set - rise);
+  if (t < -.03 || t > 1.03) return null;
+  return {x:Math.round(80 + 1440 * t), y:Math.round(330 - 270 * Math.sin(Math.PI * Math.min(1, Math.max(0, t)))), low:t < .12 || t > .88};
 }
 
 export function distanceKm(a, b) {

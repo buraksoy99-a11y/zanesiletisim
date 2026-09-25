@@ -40,4 +40,4 @@ Wrangler oturumu süresi dolmuşsa kullanıcının kendi tarayıcısından giri�
 - Altı mağazanın adresleri, saatleri, telefon/e-posta ve harita hedefleri önceki siteden korunur.
 - Yerel önizleme ibaresi üretimde “Tüm hakları saklıdır.” olur; noindex kaldırılmış, canonical/robots/sitemap ve yapılandırılmış veri korunmuştur.
 - Cloudflare'ın e-posta gizleme işleminin React HTML'ini değiştirmemesi için kök `email_off` yorumlarıyla sarılır; alan adı genelindeki güvenlik ayarları değiştirilmez.
-- Palet #E60000 / siyah / beyaz + Boğaz mavisi. Tek hareket sayfa açılışında hattın çizilmesidir. Harici CDN, fotoğraf, izleme veya form yok.
+- Palet #E60000 / siyah / beyaz + Boğaz mavisi. "Canlı İstanbul" (Eylül 2026): üstte SVG Boğaz panoraması İstanbul saatine göre gündüz/akşam/gece olur, açık mağazalar sinyal atar, tren hattı dolaşır; hat bölümünde tren kaydırmayla ilerler; hizmet çizimleri, metro "25" ve telefon sayacı görününce oynar. Hareket azaltma tercihinde hepsi durağandır, JavaScript'siz ziyaretçi tamamlanmış hali görür. Harici CDN, fotoğraf, izleme veya form yok.

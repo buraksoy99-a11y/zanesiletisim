@@ -81,8 +81,11 @@ async function statusesAt(browser, utc, errors) {
     assert.equal(await staticPage.locator('link[rel="canonical"]').getAttribute('href'),'https://zanesiletisim.info/');
     assert.equal(await staticPage.locator('meta[name="robots"]').getAttribute('content'),'index, follow');
     assert.equal(await staticPage.locator('script[type="application/ld+json"]').evaluate(e=>JSON.parse(e.textContent).telephone),'+905453636464');
+    assert.equal(await staticPage.locator('.fb-form input[name="puan"]').count(),5,'The feedback form must work as a plain form');
+    assert.equal(await staticPage.locator('.fb-form input[name="magaza"]').count(),6);
+    assert.equal(await staticPage.locator('.fb-form').getAttribute('action'),'/api/geribildirim');
     await staticPage.close();
-    result.withoutJavaScript={stores:6,hours:true,contactLinks:true,canonicalAndIndexing:true};
+    result.withoutJavaScript={stores:6,hours:true,contactLinks:true,canonicalAndIndexing:true,feedbackForm:true};
 
     // Geometry matrix: no overflow or clipped text, and the line stays straight at every width.
     const page=await browser.newPage({viewport:{width:1440,height:1000}});
@@ -174,7 +177,7 @@ async function statusesAt(browser, utc, errors) {
       watchErrors(geoPage,errors);
       await geoPage.goto(base);
       await settle(geoPage);
-      await geoPage.locator('.btn-primary').click();
+      await geoPage.locator('.hero .btn-primary').click();
       await geoPage.waitForSelector('.station.is-nearest');
       assert.equal(await geoPage.locator('.station.is-nearest').getAttribute('id'),'magaza-akasya');
       assert.match(await geoPage.locator('.geo-message').textContent(),/^Size en yakın mağaza Akasya, yaklaşık [\d,]+ (m|km)\.$/);
@@ -186,6 +189,51 @@ async function statusesAt(browser, utc, errors) {
     }
     result.nearestStore={highlighted:true,message:true,scrolledIntoView:true};
 
+    // Feedback: the face follows the rating, a missing rating is explained, and the answers are posted once.
+    for (const viewport of [{width:1440,height:1000},{width:390,height:844}]) {
+      const fbContext=await browser.newContext({viewport});
+      const fbPage=await fbContext.newPage();
+      watchErrors(fbPage,errors);
+      const posted=[];
+      await fbPage.route('**/api/geribildirim',route=>{posted.push(route.request().postDataJSON());route.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});});
+      await fbPage.goto(base);
+      await settle(fbPage);
+      await fbPage.locator('.fb-send').click();
+      await fbPage.waitForSelector('#fb-missing');
+      assert.equal(posted.length,0,'Nothing is sent without a rating');
+      await fbPage.locator('.rate-stop').nth(0).click();
+      await fbPage.waitForSelector('.fb-face[data-mood="1"]');
+      assert.equal(await fbPage.locator('#fb-missing').count(),0);
+      assert.equal(await fbPage.locator('.fb-sorry a').getAttribute('href'),'tel:+905453636464');
+      assert.equal((await fbPage.locator('.fb-step').nth(2).locator('legend').textContent()).trim(),'Neyi düzeltelim?');
+      await fbPage.locator('.rate-stop').nth(4).click();
+      await fbPage.waitForSelector('.fb-face[data-mood="5"]');
+      assert.equal(await fbPage.locator('.fb-sorry').count(),0);
+      await fbPage.locator('.chip',{hasText:'Akasya'}).click();
+      await fbPage.locator('.chip-topic',{hasText:'İşlem hızı'}).click();
+      await fbPage.locator('.fb-form textarea').fill('  Hattım 10 dakikada taşındı.  ');
+      assert.equal(await fbPage.locator('.fb-step.is-done').count(),4);
+      await fbPage.locator('.fb-send').click();
+      await fbPage.waitForSelector('.fb-done');
+      assert.deepEqual(posted,[{puan:5,magaza:'akasya',konular:['İşlem hızı'],yorum:'Hattım 10 dakikada taşındı.'}]);
+      assert.equal(await fbPage.evaluate(()=>document.activeElement.className),'fb-done');
+      await settle(fbPage);
+      await fbPage.screenshot({path:`${output}/zanes-feedback-${viewport.width}-${name}.png`});
+      await fbContext.close();
+    }
+    // A failed post keeps the answers; network errors are expected here, so only script errors count.
+    const failPage=await browser.newPage({viewport:{width:1440,height:1000}});
+    failPage.on('pageerror',e=>errors.push(e.message));
+    await failPage.route('**/api/geribildirim',route=>route.fulfill({status:503,body:''}));
+    await failPage.goto(base);
+    await failPage.locator('.rate-stop').nth(2).click();
+    await failPage.locator('.fb-send').click();
+    await failPage.waitForSelector('.fb-last .fb-alert');
+    assert.equal(await failPage.locator('.fb-done').count(),0);
+    assert.equal(await failPage.locator('input[name="puan"][value="3"]').isChecked(),true);
+    await failPage.close();
+    result.feedback={faceFollowsRating:true,missingRating:true,posted:true,failureKeepsAnswers:true};
+
     // Phone: tap targets, header call button, full-page capture.
     const touchContext=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2});
     const touchPage=await touchContext.newPage();
@@ -194,7 +242,7 @@ async function statusesAt(browser, utc, errors) {
     await settle(touchPage);
     assert.equal(await touchPage.locator('.nav').isVisible(),false);
     assert.equal((await touchPage.locator('.call').innerText()).trim(),'Ara');
-    for (const selector of ['.call','.btn','.directions']) {
+    for (const selector of ['.call','.btn','.directions','.rate-stop','.chip-face']) {
       const heights=await touchPage.locator(selector).evaluateAll(es=>es.map(e=>e.getBoundingClientRect().height));
       assert.ok(heights.every(h=>h>=44),`${name} ${selector} tap target under 44px`);
     }

@@ -20,6 +20,7 @@ src/            — React bileşenleri, stiller, mağaza verisi ve hareketler
 index.html      — Üretim metadatası ve HTML şablonu
 build.cjs       — Statik HTML + hashli JS/CSS üretimi
 dist/           — Yalnız bu klasör yayınlanır (Git dışı)
+functions/      — Pages Function: /api/geribildirim → info@zanes.com.tr maili (deploy kökten koşulunca birlikte yüklenir)
 favicon.svg     — Kırmızı "Z" lettermark SVG favicon
 robots.txt      — Search engine crawl directives
 sitemap.xml     — Basit sitemap (tek URL)
@@ -37,7 +38,7 @@ sitemap.xml     — Basit sitemap (tek URL)
 3. **Mağazalarımız (hat)** — Mağazalar metro hat şeridi gibi tek kırmızı hatta durak; Boğaz'ı köprüyle geçer. 1180px altında dikey hat. Canlı açık/kapalı durumu İstanbul saatiyle hesaplanır (saatler her gün geçerli varsayılır). Saat kalkış tablosu karolarıyla; tren kaydırmayla ilerler
 4. **Hizmetler** — Telefon, aksesuar ve Vodafone işlemleri; her satırda görününce kendini çizen SVG (`src/Art.jsx`)
 5. **Hakkımızda** — 25 yıllık deneyim, Vodafone Business Partner, 4 Avrupa + 2 Anadolu mağazası; "25" metro hattı olarak çizilir
-6. **Geribildirim ("Ziyaretiniz nasıldı?")** — Puana göre ifadesi değişen SVG yüz (`src/Feedback.jsx`); puan 5 duraklı hat, sorular dikey hatta durak. Gönderince tren notu "Zanes" durağına taşır, tablo "TEŞEKKÜRLER" döner. `/api/geribildirim`e JSON gönderir (JavaScript'siz düz form); alıcı taraf bu depoda değil
+6. **Geribildirim ("Ziyaretiniz nasıldı?")** — Puana göre ifadesi değişen SVG yüz (`src/Feedback.jsx`); puan 5 duraklı hat, sorular dikey hatta durak. Gönderince tren notu "Zanes" durağına taşır, tablo "TEŞEKKÜRLER" döner. `/api/geribildirim`e JSON gönderir (JavaScript'siz düz form); `functions/api/geribildirim.js` Cloudflare Email Service ile info@zanes.com.tr'ye mail atar (Burak kararı 2026-09-25: panel yok, e-posta). Pages projesinde `EMAIL_API_TOKEN` + `CF_ACCOUNT_ID` yoksa 503 döner. Kişisel bilgi alanı yok
 7. **İletişim** — Kırmızı bant, büyük telefon numarası, e-posta, adres
 
 ## Mağazalar

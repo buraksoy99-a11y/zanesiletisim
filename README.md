@@ -15,7 +15,7 @@ npm test
 - `index.html`: üretim metadatasını içeren HTML şablonu; doğrudan yayınlanmaz.
 - `build.cjs`: React içeriğini HTML'e önceden işler, istemciyi hydrate eder ve hashli JS/CSS üretir.
 - `dist/`: tek yayın çıktısı. Kaynak, testler, ekran görüntüleri ve source map içermez.
-- `verify.cjs`: kendi geçici loopback sunucusunu açar. İki tarayıcı motorunda (Chromium + WebKit) 13 genişlikte taşma/kırpılma ve hat hizası, sabit saatle canlı açık/kapalı durumu, sahte konumla en yakın mağaza, dokunma hedefleri, reduced-motion ve JavaScript olmadan içerik kontrollerini çalıştırır. `BASE_URL` verilirse aynı kontroller bu adrese yönelir. Sonuçlar `artifacts/` altında; Git'e girmez.
+- `verify.cjs`: kendi geçici loopback sunucusunu açar. İki tarayıcı motorunda (Chromium + WebKit) 13 genişlikte taşma/kırpılma ve hat hizası, sabit saatle canlı açık/kapalı durumu, sahte konumla en yakın mağaza, geribildirim formu (eksik puan, gönderilen veri, hata durumu), dokunma hedefleri, reduced-motion ve JavaScript olmadan içerik kontrollerini çalıştırır. `BASE_URL` verilirse aynı kontroller bu adrese yönelir. Sonuçlar `artifacts/` altında; Git'e girmez.
 - CI yalnız taslak PR hazır olduğunda veya elle başlatıldığında GitHub-hosted runner'da çalışır; hiçbir üretim sırrı istemez.
 
 ## Yayın
@@ -40,4 +40,5 @@ Wrangler oturumu süresi dolmuşsa kullanıcının kendi tarayıcısından giri�
 - Altı mağazanın adresleri, saatleri, telefon/e-posta ve harita hedefleri önceki siteden korunur.
 - Yerel önizleme ibaresi üretimde “Tüm hakları saklıdır.” olur; noindex kaldırılmış, canonical/robots/sitemap ve yapılandırılmış veri korunmuştur.
 - Cloudflare'ın e-posta gizleme işleminin React HTML'ini değiştirmemesi için kök `email_off` yorumlarıyla sarılır; alan adı genelindeki güvenlik ayarları değiştirilmez.
-- Palet #E60000 / siyah / beyaz + Boğaz mavisi. "Canlı İstanbul" (Eylül 2026): üstte SVG Boğaz panoraması İstanbul saatine göre gündüz/akşam/gece olur, açık mağazalar sinyal atar, tren hattı dolaşır; hat bölümünde tren kaydırmayla ilerler; hizmet çizimleri, metro "25" ve telefon sayacı görününce oynar. Hareket azaltma tercihinde hepsi durağandır, JavaScript'siz ziyaretçi tamamlanmış hali görür. Harici CDN, fotoğraf, izleme veya form yok.
+- Palet #E60000 / siyah / beyaz + Boğaz mavisi. "Canlı İstanbul" (Eylül 2026): üstte SVG Boğaz panoraması İstanbul saatine göre gündüz/akşam/gece olur, açık mağazalar sinyal atar, tren hattı dolaşır; hat bölümünde tren kaydırmayla ilerler; hizmet çizimleri, metro "25" ve telefon sayacı görününce oynar. Hareket azaltma tercihinde hepsi durağandır, JavaScript'siz ziyaretçi tamamlanmış hali görür. Harici CDN, fotoğraf veya izleme yok.
+- Tek form "Ziyaretiniz nasıldı?" geribildirimidir: puan, mağaza, konu ve isteğe bağlı yorum `/api/geribildirim` adresine gider (JavaScript ile JSON, olmadan düz form). Kişisel bilgi alanı yoktur. Alıcı taraf bu depoda değildir; kurulmadan yayına alınmaz.

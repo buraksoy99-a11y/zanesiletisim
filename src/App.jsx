@@ -93,14 +93,12 @@ function Flaps({digits}) {
 const clamp = value => Math.min(1, Math.max(0, value));
 
 // Scrolling drives a train along the line; each station pings as the train passes it.
-// On the vertical line the train is sticky, so the browser keeps it steady while scrolling;
-// moving it from a scroll handler lagged a frame behind on iPhone and made it jump up and down.
 function useLineTrain(hatRef) {
   useEffect(() => {
-    const hat = hatRef.current, train = hat.querySelector('.hat-train'), track = hat.querySelector('.hat-track');
+    const hat = hatRef.current, train = hat.querySelector('.hat-train');
     if (prefersReducedMotion()) return undefined;
     const vertical = matchMedia('(max-width:1179px)');
-    let previous = null, queued = false, trackTop = '';
+    let previous = null, queued = false;
     const ping = station => { station.classList.remove('ping'); void station.offsetWidth; station.classList.add('ping'); setTimeout(() => station.classList.remove('ping'), 1000); };
     const update = () => {
       queued = false;
@@ -109,11 +107,10 @@ function useLineTrain(hatRef) {
       const marks = stations.map(station => { const m = station.querySelector('.marker').getBoundingClientRect(); return vertical.matches ? m.top + m.height / 2 - box.top : m.left + m.width / 2 - box.left; });
       let front;
       if (vertical.matches) {
-        // The track starts just past the first stop; CSS ends it above the fade at the bottom.
-        const top = `${(marks[0] + 70 - 13).toFixed(1)}px`;
-        if (top !== trackTop) { trackTop = top; track.style.setProperty('--track-top', top); }
-        const t = train.getBoundingClientRect();
-        front = t.top + t.height / 2 - box.top;
+        // Keep the whole train on the visible rail: just past the first stop, above the fade at the bottom.
+        const first = marks[0] + 70, last = Math.max(first, box.height - 150);
+        front = first + clamp((vh * .55 - box.top) / box.height) * (last - first);
+        train.style.setProperty('--ty', `${(front - 13).toFixed(1)}px`);
       } else {
         const x = -110 + clamp((vh * .92 - box.top) / (vh * .62)) * (box.width + 10);
         train.style.setProperty('--tx', `${x.toFixed(1)}px`);
@@ -153,7 +150,7 @@ function Line({nearestId, now}) {
             </div>
           </React.Fragment>;
         })}
-        <span className="hat-track" aria-hidden="true"><svg className="hat-train" viewBox="-38 -9 76 18" aria-hidden="true" focusable="false"><use href="#train-sym" x="-38" y="-9" width="76" height="18" /></svg></span>
+        <svg className="hat-train" viewBox="-38 -9 76 18" aria-hidden="true" focusable="false"><use href="#train-sym" x="-38" y="-9" width="76" height="18" /></svg>
       </div>
     </div>
   </section>;

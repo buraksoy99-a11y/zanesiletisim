@@ -1,8 +1,8 @@
 import {stores, contact} from '../../src/stores.js';
 import {ratings, topics, COMMENT_MAX, TRAP_FIELD} from '../../src/feedback-fields.js';
 
-// Site feedback is mailed to the shop inbox through Cloudflare Email Service. Pages Functions have no
-// email binding, so the REST API is used; the project needs EMAIL_API_TOKEN (secret) and CF_ACCOUNT_ID.
+// Site feedback is mailed to the shop inbox through Cloudflare Email Service. Pages Functions have no email
+// binding of their own, so the mail goes through the private mailer Worker bound as MAILER (workers/mailer).
 const TO = 'info@zanes.com.tr';
 const FROM = 'geribildirim@zanesiletisim.info';
 const MAX_BODY = 8192;
@@ -66,15 +66,11 @@ export async function onRequestPost({request, env}) {
   if (input[TRAP_FIELD]) return answer(200);
   const feedback = readFeedback(input);
   if (!feedback) return answer(400);
-  if (!env.EMAIL_API_TOKEN || !env.CF_ACCOUNT_ID) { console.error('feedback: mail sending is not configured'); return answer(503); }
+  if (!env.MAILER) { console.error('feedback: MAILER binding is missing'); return answer(503); }
   try {
-    const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${env.CF_ACCOUNT_ID}/email/sending/send`, {
-      method:'POST',
-      headers:{Authorization:`Bearer ${env.EMAIL_API_TOKEN}`, 'Content-Type':'application/json'},
-      body:JSON.stringify(composeMail(feedback)),
-    });
+    const response = await env.MAILER.fetch('https://mailer/', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(composeMail(feedback))});
     const result = await response.json().catch(() => null);
-    if (!response.ok || !result?.success) throw new Error(`HTTP ${response.status} ${JSON.stringify(result?.errors ?? [])}`);
+    if (!response.ok || !result?.ok) throw new Error(`mailer ${response.status} ${result?.code ?? ''}`);
   } catch (error) {
     console.error('feedback: mail failed', error.message);
     return answer(503);

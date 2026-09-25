@@ -1,0 +1,9 @@
+# Cloudflare Pages settings for the zanesiletisim project; deploys take the project's bindings from this file.
+name = "zanesiletisim"
+pages_build_output_dir = "./dist"
+compatibility_date = "2026-04-01"
+
+# The feedback function mails through the private mailer Worker (workers/mailer).
+[[services]]
+binding = "MAILER"
+service = "zanes-geribildirim-mailer"

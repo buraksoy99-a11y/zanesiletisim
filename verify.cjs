@@ -59,41 +59,49 @@ async function statusesAt(browser, utc, errors) {
 
 // The feedback mail function: accepts what the page sends, refuses anything else, mails a readable summary.
 async function checkFeedbackFunction() {
-  await esbuild.build({absWorkingDir:__dirname,entryPoints:['functions/api/geribildirim.js'],outfile:'.build/feedback-function.cjs',platform:'node',format:'cjs',bundle:true,logLevel:'silent'});
-  const {onRequestPost}=require('./.build/feedback-function.cjs');
-  const env={EMAIL_API_TOKEN:'test-token',CF_ACCOUNT_ID:'acc123'};
+  const bundle=async(entry,outfile)=>{await esbuild.build({absWorkingDir:__dirname,entryPoints:[entry],outfile,platform:'node',format:'cjs',bundle:true,logLevel:'silent'});return require(`./${outfile}`);};
+  const {onRequestPost}=await bundle('functions/api/geribildirim.js','.build/feedback-function.cjs');
+  const mailer=(await bundle('workers/mailer/index.js','.build/feedback-mailer.cjs')).default;
+  const sent=[],realError=console.error;
+  const env={MAILER:{fetch:async(url,init)=>{sent.push(JSON.parse(init.body));return Response.json({ok:true,id:'m1'});}}};
   const post=(body,{type='application/json',origin='https://zanesiletisim.info',withEnv=env}={})=>onRequestPost({env:withEnv,request:new Request('https://zanesiletisim.info/api/geribildirim',{method:'POST',headers:{'Content-Type':type,Origin:origin},body})});
-  const sent=[],realFetch=global.fetch,realError=console.error;
-  global.fetch=async(url,init)=>{sent.push({url,init,mail:JSON.parse(init.body)});return Response.json({success:true,errors:[],result:{queued:['info@zanes.com.tr']}});};
   console.error=()=>{};
   try {
     let response=await post(JSON.stringify({puan:2,magaza:'akasya',konular:['İşlem hızı'],yorum:' <b>Uzun</b> kuyruk '}));
     assert.equal(response.status,200);
-    assert.equal(sent[0].url,'https://api.cloudflare.com/client/v4/accounts/acc123/email/sending/send');
-    assert.equal(sent[0].init.headers.Authorization,'Bearer test-token');
-    assert.equal(sent[0].mail.to,'info@zanes.com.tr');
-    assert.equal(sent[0].mail.subject,'Düşük puan: 2/5 Kötü · Akasya AVM');
-    assert.match(sent[0].mail.text,/Konular: İşlem hızı\n[^]*Yorum:\n<b>Uzun<\/b> kuyruk\n/);
-    assert.ok(sent[0].mail.html.includes('&lt;b&gt;Uzun&lt;/b&gt; kuyruk')&&!sent[0].mail.html.includes('<b>Uzun'),'Comments are escaped in the HTML mail');
+    assert.equal(sent[0].to,'info@zanes.com.tr');
+    assert.equal(sent[0].from,'geribildirim@zanesiletisim.info');
+    assert.equal(sent[0].subject,'Düşük puan: 2/5 Kötü · Akasya AVM');
+    assert.match(sent[0].text,/Konular: İşlem hızı\n[^]*Yorum:\n<b>Uzun<\/b> kuyruk\n/);
+    assert.ok(sent[0].html.includes('&lt;b&gt;Uzun&lt;/b&gt; kuyruk')&&!sent[0].html.includes('<b>Uzun'),'Comments are escaped in the HTML mail');
     // A visitor without JavaScript posts the plain form and gets a thank-you page.
     response=await post(new URLSearchParams([['puan','5'],['magaza','cevahir'],['konu','Fiyatlar'],['yorum','']]).toString(),{type:'application/x-www-form-urlencoded'});
     assert.equal(response.status,200);
     assert.match(await response.text(),/Teşekkürler/);
-    assert.equal(sent[1].mail.subject,'Geribildirim: 5/5 Harika · Cevahir AVM');
+    assert.equal(sent[1].subject,'Geribildirim: 5/5 Harika · Cevahir AVM');
     // Refused without mailing: bad rating, unknown store or topic, long comment, broken body, another site; the trap is thanked silently.
     for (const body of [{},{puan:0},{puan:6},{puan:2.5},{puan:3,magaza:'kadikoy'},{puan:3,konular:['Tarife']},{puan:3,yorum:'x'.repeat(601)}]) assert.equal((await post(JSON.stringify(body))).status,400,JSON.stringify(body).slice(0,40));
     assert.equal((await post('{broken')).status,400);
     assert.equal((await post(JSON.stringify({puan:4}),{origin:'https://example.com'})).status,403);
     assert.equal((await post(JSON.stringify({puan:4,website:'http://spam.example'}))).status,200);
     assert.equal(sent.length,2);
-    // Not configured yet, or the mail service refuses: the visitor gets a retryable error, never a false thank-you.
+    // No mailer bound, or the mailer fails: the visitor gets a retryable error, never a false thank-you.
     assert.equal((await post(JSON.stringify({puan:4}),{withEnv:{}})).status,503);
-    global.fetch=async()=>Response.json({success:false,errors:[{code:10001}]},{status:400});
-    assert.equal((await post(JSON.stringify({puan:4}))).status,503);
+    assert.equal((await post(JSON.stringify({puan:4}),{withEnv:{MAILER:{fetch:async()=>Response.json({ok:false,code:'E_RATE_LIMIT_EXCEEDED'},{status:500})}}})).status,503);
+    // The mailer passes the message to its email binding and reports the service's refusal.
+    const handed=[];
+    const mailRequest=()=>new Request('https://mailer/',{method:'POST',body:JSON.stringify({...sent[0],extra:'ignored'})});
+    response=await mailer.fetch(mailRequest(),{EMAIL:{send:async message=>{handed.push(message);return {messageId:'m2'};}}});
+    assert.deepEqual(await response.json(),{ok:true,id:'m2'});
+    assert.deepEqual(Object.keys(handed[0]).sort(),['from','html','subject','text','to']);
+    response=await mailer.fetch(mailRequest(),{EMAIL:{send:async()=>{throw Object.assign(new Error('not verified'),{code:'E_SENDER_NOT_VERIFIED'});}}});
+    assert.equal(response.status,500);
+    assert.equal((await response.json()).code,'E_SENDER_NOT_VERIFIED');
+    assert.equal((await mailer.fetch(new Request('https://mailer/'),{})).status,405);
   } finally {
-    global.fetch=realFetch;console.error=realError;
+    console.error=realError;
   }
-  report.feedbackFunction={mailed:true,plainForm:true,rejectsInvalid:true,originChecked:true,botTrap:true,failureIs503:true};
+  report.feedbackFunction={mailed:true,plainForm:true,rejectsInvalid:true,originChecked:true,botTrap:true,failureIs503:true,mailer:true};
 }
 
 (async()=>{

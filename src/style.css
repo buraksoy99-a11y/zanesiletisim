@@ -187,6 +187,7 @@ h1 span:last-child{animation:from-right 1s var(--ease) .25s backwards}
 .is-nearest .marker{top:-5px;left:-5px;width:calc(var(--marker) + 10px);height:calc(var(--marker) + 10px);background:var(--red)}
 .hat-train{display:none;position:absolute;z-index:3;top:calc(var(--rail-y) - 13px);left:0;width:96px;height:26px;transform:translate3d(var(--tx,-200px),0,0);will-change:transform;pointer-events:none}
 .js .hat-train{display:block}
+.hat-track{display:contents}
 
 /* Services */
 .section{padding:clamp(72px,9vw,140px) 0}
@@ -334,7 +335,9 @@ h2{font-size:clamp(34px,4.4vw,64px);line-height:1;font-weight:780;letter-spacing
   .strait:after{animation-name:current-x}
   .strait span{writing-mode:horizontal-tb;transform:none;padding:2px 8px}
   .strait:before{top:0;bottom:0;left:calc(var(--gutter) + var(--rail-x) - 12px);right:auto;width:24px;height:auto;border-block:0;border-inline:2px solid var(--black)}
-  .hat-train{top:0;left:calc(var(--rail-x) - 48px);transform:translate3d(0,var(--ty,110px),0) rotate(90deg)}
+  /* The train rides a track from the first stop to above the bottom fade and sticks mid-screen while the line scrolls past. */
+  .hat-track{display:block;position:absolute;z-index:3;top:var(--track-top,110px);bottom:137px;left:calc(var(--rail-x) - 48px);width:96px;pointer-events:none}
+  .hat-train{position:sticky;top:calc(55vh - 13px);left:auto;transform:rotate(90deg);will-change:auto}
 }
 @media (max-width:900px){
   .hero-grid,.split,.about-grid{grid-template-columns:minmax(0,1fr)}

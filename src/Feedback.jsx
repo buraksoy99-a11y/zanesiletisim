@@ -2,12 +2,7 @@ import React, {useEffect, useRef, useState} from 'react';
 import {stores, contact} from './stores';
 import Icon, {ZMark, Z_PATH} from './Icon';
 import {useRevealed, useOnScreen, prefersReducedMotion} from './motion';
-
-// Where the form posts (JSON with JavaScript, a plain form post without it).
-export const FEEDBACK_ENDPOINT = '/api/geribildirim';
-
-const ratings = ['Çok kötü', 'Kötü', 'İdare eder', 'İyi', 'Harika'];
-const topics = ['Personelin ilgisi', 'İşlem hızı', 'Ürün bilgisi', 'Fiyatlar', 'Bekleme süresi', 'Mağaza ortamı'];
+import {FEEDBACK_ENDPOINT, ratings, topics, COMMENT_MAX, TRAP_FIELD} from './feedback-fields';
 
 // Face parameters per mood: mouth (x1 y1 cx lowerY x2 y2 upperY), left brow (x1 y1 cx cy x2 y2), eye height, cheek opacity.
 // While the mouth's two control points match it is one red stroke; pulled apart it opens into a filled smile.
@@ -160,8 +155,10 @@ export default function Feedback() {
     if (state === 'sending') return;
     if (rating === null) { setState('missing'); formRef.current.querySelector('input[name="puan"]').focus(); return; }
     setState('sending');
+    const trap = formRef.current.elements[TRAP_FIELD].value;
     try {
-      const response = await fetch(FEEDBACK_ENDPOINT, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({puan:rating, magaza:storeId, konular:picked, yorum:comment.trim()})});
+      const body = {puan:rating, magaza:storeId, konular:picked, yorum:comment.trim(), ...(trap ? {[TRAP_FIELD]:trap} : {})};
+      const response = await fetch(FEEDBACK_ENDPOINT, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       setState('sent');
     } catch {
@@ -183,6 +180,7 @@ export default function Feedback() {
       </div>
       {sent ? <Sent rating={rating} storeId={storeId} doneRef={doneRef} onAgain={again} /> :
       <form ref={formRef} className="fb-form" action={FEEDBACK_ENDPOINT} method="post" noValidate={ready} onSubmit={submit}>
+        <input className="fb-trap" type="text" name={TRAP_FIELD} tabIndex={-1} autoComplete="off" aria-hidden="true" />
         <ol className="fb-steps">
           <li className={`fb-step${rating !== null ? ' is-done' : ''}`}>
             <StepNumber n={1} />
@@ -224,7 +222,7 @@ export default function Feedback() {
             <StepNumber n={4} />
             <label className="fb-field">
               <span className="fb-q">Eklemek istediğiniz bir şey var mı?</span>
-              <textarea name="yorum" rows={4} maxLength={600} value={comment} onChange={event => setComment(event.target.value)} placeholder="İsteğe bağlı" />
+              <textarea name="yorum" rows={4} maxLength={COMMENT_MAX} value={comment} onChange={event => setComment(event.target.value)} placeholder="İsteğe bağlı" />
             </label>
           </li>
           <li className={`fb-step fb-last${state === 'sending' ? ' is-done' : ''}`}>

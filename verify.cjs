@@ -1,4 +1,5 @@
 const {chromium, webkit} = require('playwright');
+const esbuild = require('esbuild');
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -56,7 +57,47 @@ async function statusesAt(browser, utc, errors) {
   return result;
 }
 
+// The feedback mail function: accepts what the page sends, refuses anything else, mails a readable summary.
+async function checkFeedbackFunction() {
+  await esbuild.build({absWorkingDir:__dirname,entryPoints:['functions/api/geribildirim.js'],outfile:'.build/feedback-function.cjs',platform:'node',format:'cjs',bundle:true,logLevel:'silent'});
+  const {onRequestPost}=require('./.build/feedback-function.cjs');
+  const env={EMAIL_API_TOKEN:'test-token',CF_ACCOUNT_ID:'acc123'};
+  const post=(body,{type='application/json',origin='https://zanesiletisim.info',withEnv=env}={})=>onRequestPost({env:withEnv,request:new Request('https://zanesiletisim.info/api/geribildirim',{method:'POST',headers:{'Content-Type':type,Origin:origin},body})});
+  const sent=[],realFetch=global.fetch,realError=console.error;
+  global.fetch=async(url,init)=>{sent.push({url,init,mail:JSON.parse(init.body)});return Response.json({success:true,errors:[],result:{queued:['info@zanes.com.tr']}});};
+  console.error=()=>{};
+  try {
+    let response=await post(JSON.stringify({puan:2,magaza:'akasya',konular:['İşlem hızı'],yorum:' <b>Uzun</b> kuyruk '}));
+    assert.equal(response.status,200);
+    assert.equal(sent[0].url,'https://api.cloudflare.com/client/v4/accounts/acc123/email/sending/send');
+    assert.equal(sent[0].init.headers.Authorization,'Bearer test-token');
+    assert.equal(sent[0].mail.to,'info@zanes.com.tr');
+    assert.equal(sent[0].mail.subject,'Düşük puan: 2/5 Kötü · Akasya AVM');
+    assert.match(sent[0].mail.text,/Konular: İşlem hızı\n[^]*Yorum:\n<b>Uzun<\/b> kuyruk\n/);
+    assert.ok(sent[0].mail.html.includes('&lt;b&gt;Uzun&lt;/b&gt; kuyruk')&&!sent[0].mail.html.includes('<b>Uzun'),'Comments are escaped in the HTML mail');
+    // A visitor without JavaScript posts the plain form and gets a thank-you page.
+    response=await post(new URLSearchParams([['puan','5'],['magaza','cevahir'],['konu','Fiyatlar'],['yorum','']]).toString(),{type:'application/x-www-form-urlencoded'});
+    assert.equal(response.status,200);
+    assert.match(await response.text(),/Teşekkürler/);
+    assert.equal(sent[1].mail.subject,'Geribildirim: 5/5 Harika · Cevahir AVM');
+    // Refused without mailing: bad rating, unknown store or topic, long comment, broken body, another site; the trap is thanked silently.
+    for (const body of [{},{puan:0},{puan:6},{puan:2.5},{puan:3,magaza:'kadikoy'},{puan:3,konular:['Tarife']},{puan:3,yorum:'x'.repeat(601)}]) assert.equal((await post(JSON.stringify(body))).status,400,JSON.stringify(body).slice(0,40));
+    assert.equal((await post('{broken')).status,400);
+    assert.equal((await post(JSON.stringify({puan:4}),{origin:'https://example.com'})).status,403);
+    assert.equal((await post(JSON.stringify({puan:4,website:'http://spam.example'}))).status,200);
+    assert.equal(sent.length,2);
+    // Not configured yet, or the mail service refuses: the visitor gets a retryable error, never a false thank-you.
+    assert.equal((await post(JSON.stringify({puan:4}),{withEnv:{}})).status,503);
+    global.fetch=async()=>Response.json({success:false,errors:[{code:10001}]},{status:400});
+    assert.equal((await post(JSON.stringify({puan:4}))).status,503);
+  } finally {
+    global.fetch=realFetch;console.error=realError;
+  }
+  report.feedbackFunction={mailed:true,plainForm:true,rejectsInvalid:true,originChecked:true,botTrap:true,failureIs503:true};
+}
+
 (async()=>{
+  await checkFeedbackFunction();
   if(!base) await startLocalServer();
   const builtHtml=fs.readFileSync(path.join(__dirname,'dist/index.html'),'utf8');
   assert.ok(builtHtml.includes('id="hero-title"')&&(builtHtml.match(/class="station/g)||[]).length===6,'The built document must include real content before hydration');

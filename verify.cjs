@@ -8,7 +8,7 @@ fs.mkdirSync(output,{recursive:true});
 let base = process.env.BASE_URL;
 let localServer;
 const originalMaps = require('./tests/map-links.json');
-const report = {design:'iki-yaka-hat',productionBuild:true,engines:[]};
+const report = {design:'iki-yaka-canli-istanbul',productionBuild:true,engines:[]};
 
 async function startLocalServer() {
   const dist=path.join(__dirname,'dist');
@@ -49,6 +49,8 @@ async function statusesAt(browser, utc, errors) {
   const result={
     caption:(await page.locator('.hat-caption').textContent()).trim(),
     stations:Object.fromEntries(await page.locator('.station').evaluateAll(es=>es.map(e=>[e.id.replace('magaza-',''),e.querySelector('.status').textContent.trim()]))),
+    phase:await page.locator('.hero').getAttribute('data-phase'),
+    closedPins:await page.locator('.scene .pin.is-closed').count(),
   };
   await context.close();
   return result;
@@ -75,6 +77,7 @@ async function statusesAt(browser, utc, errors) {
     assert.deepEqual(await staticPage.locator('.station .hours').allTextContents(),['10:00 – 22:00','10:00 – 22:00','09:00 – 21:00','10:00 – 22:00','10:00 – 22:00','09:00 – 21:00']);
     assert.ok(await staticPage.locator('a[href="tel:+905453636464"]').count()>=3);
     assert.equal(await staticPage.locator('a[href="mailto:info@zanes.com.tr"]').count(),1);
+    assert.equal((await staticPage.locator('.big-phone').innerText()).trim(),'0545 363 64 64','The rolling counter must fall back to the plain number');
     assert.equal(await staticPage.locator('link[rel="canonical"]').getAttribute('href'),'https://zanesiletisim.info/');
     assert.equal(await staticPage.locator('meta[name="robots"]').getAttribute('content'),'index, follow');
     assert.equal(await staticPage.locator('script[type="application/ld+json"]').evaluate(e=>JSON.parse(e.textContent).telephone),'+905453636464');
@@ -149,14 +152,20 @@ async function statusesAt(browser, utc, errors) {
     assert.match(midday.caption,/saat 14:00\. Altı mağazamızın hepsi şu an açık\./);
     assert.equal(midday.stations.akasya,'Açık, kapanış 22:00');
     assert.equal(midday.stations.mecidiyekoy,'Açık, kapanış 21:00');
+    assert.equal(midday.phase,'day');
+    assert.equal(midday.closedPins,0);
     const evening=await statusesAt(browser,'2026-09-24T18:30:00Z',errors);
     assert.match(evening.caption,/saat 21:30\. Altı mağazamızın dördü şu an açık\./);
     assert.equal(evening.stations.cevahir,'Açık, kapanışa 30 dk');
     assert.equal(evening.stations.bagdat,'Kapalı, açılış 09:00');
+    // The panorama follows the same clock: night sky, and the two 21:00 stores go grey.
+    assert.equal(evening.phase,'night');
+    assert.equal(evening.closedPins,2);
     const night=await statusesAt(browser,'2026-09-24T21:30:00Z',errors);
     assert.match(night.caption,/saat 00:30\. Mağazalarımız şu an kapalı, ilk açılış 09:00\./);
     assert.equal(night.stations.istinyepark,'Kapalı, açılış 10:00');
-    result.liveStatus={midday:true,closingSoon:true,night:true};
+    assert.equal(night.closedPins,6);
+    result.liveStatus={midday:true,closingSoon:true,night:true,skyAndPins:true};
 
     // "En yakın mağazayı bul": a visitor near Acıbadem gets Akasya highlighted.
     for (const viewport of [{width:1440,height:1000},{width:390,height:844}]) {

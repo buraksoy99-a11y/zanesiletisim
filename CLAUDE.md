@@ -33,10 +33,10 @@ sitemap.xml     — Basit sitemap (tek URL)
 
 ## Site Bölümleri
 1. **Üst menü** — Rounded-Z işareti, masaüstünde 4 bağlantı + telefon düğmesi; telefonda yalnız "Ara" düğmesi (hamburger yok)
-2. **Hero** — "İki yaka, altı mağaza." + "En yakın mağazayı bul" (konum yalnız tarayıcıda hesaplanır, dışarı gönderilmez)
-3. **Mağazalarımız (hat)** — Mağazalar metro hat şeridi gibi tek kırmızı hatta durak; Boğaz'ı köprüyle geçer. 1180px altında dikey hat. Canlı açık/kapalı durumu İstanbul saatiyle hesaplanır (saatler her gün geçerli varsayılır)
-4. **Hizmetler** — Telefon, aksesuar ve Vodafone işlemleri
-5. **Hakkımızda** — 25 yıllık deneyim, Vodafone Business Partner, 4 Avrupa + 2 Anadolu mağazası
+2. **Hero** — "İki yaka, altı mağaza." + "En yakın mağazayı bul" (konum yalnız tarayıcıda hesaplanır, dışarı gönderilmez). Altında SVG Boğaz panoraması (`src/Scene.jsx`): gökyüzü İstanbul saatine göre `data-phase` day/dawn/dusk/night (gece hero koyu, yazı beyaz — Burak onayı 2026-09-25), mağaza pinleri açık/kapalı, köprüden geçen tren. Telefonda panorama iki yaka arasında yavaşça kayar
+3. **Mağazalarımız (hat)** — Mağazalar metro hat şeridi gibi tek kırmızı hatta durak; Boğaz'ı köprüyle geçer. 1180px altında dikey hat. Canlı açık/kapalı durumu İstanbul saatiyle hesaplanır (saatler her gün geçerli varsayılır). Saat kalkış tablosu karolarıyla; tren kaydırmayla ilerler
+4. **Hizmetler** — Telefon, aksesuar ve Vodafone işlemleri; her satırda görününce kendini çizen SVG (`src/Art.jsx`)
+5. **Hakkımızda** — 25 yıllık deneyim, Vodafone Business Partner, 4 Avrupa + 2 Anadolu mağazası; "25" metro hattı olarak çizilir
 6. **İletişim** — Kırmızı bant, büyük telefon numarası, e-posta, adres
 
 ## Mağazalar

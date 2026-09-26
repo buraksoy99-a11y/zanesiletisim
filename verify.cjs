@@ -1,4 +1,5 @@
 const {chromium, webkit} = require('playwright');
+const esbuild = require('esbuild');
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -56,7 +57,59 @@ async function statusesAt(browser, utc, errors) {
   return result;
 }
 
+// The feedback mail function: accepts what the page sends, refuses anything else, mails a readable summary.
+async function checkFeedbackFunction() {
+  const bundle=async(entry,outfile)=>{await esbuild.build({absWorkingDir:__dirname,entryPoints:[entry],outfile,platform:'node',format:'cjs',bundle:true,logLevel:'silent'});return require(`./${outfile}`);};
+  const {onRequestPost}=await bundle('functions/api/geribildirim.js','.build/feedback-function.cjs');
+  const mailer=(await bundle('workers/mailer/index.js','.build/feedback-mailer.cjs')).default;
+  const sent=[],realError=console.error;
+  const env={MAILER:{fetch:async(url,init)=>{sent.push(JSON.parse(init.body));return Response.json({ok:true,id:'m1'});}}};
+  const post=(body,{type='application/json',origin='https://zanesiletisim.info',withEnv=env}={})=>onRequestPost({env:withEnv,request:new Request('https://zanesiletisim.info/api/geribildirim',{method:'POST',headers:{'Content-Type':type,Origin:origin},body})});
+  console.error=()=>{};
+  try {
+    let response=await post(JSON.stringify({puan:2,magaza:'akasya',konular:['İşlem hızı'],yorum:' <b>Uzun</b> kuyruk '}));
+    assert.equal(response.status,200);
+    assert.equal(sent[0].to,'burakaksoy@zanes.com.tr');
+    assert.equal(sent[0].from,'geribildirim@zanesiletisim.info');
+    assert.equal(sent[0].subject,'Düşük puan: 2/5 Kötü · Akasya AVM');
+    assert.match(sent[0].text,/Konular: İşlem hızı\n[^]*Yorum:\n<b>Uzun<\/b> kuyruk\n/);
+    assert.ok(sent[0].html.includes('&lt;b&gt;Uzun&lt;/b&gt; kuyruk')&&!sent[0].html.includes('<b>Uzun'),'Comments are escaped in the HTML mail');
+    // A visitor without JavaScript posts the plain form and gets a thank-you page.
+    response=await post(new URLSearchParams([['puan','5'],['magaza','cevahir'],['konu','Fiyatlar'],['yorum','']]).toString(),{type:'application/x-www-form-urlencoded'});
+    assert.equal(response.status,200);
+    assert.match(await response.text(),/Teşekkürler/);
+    assert.equal(sent[1].subject,'Geribildirim: 5/5 Harika · Cevahir AVM');
+    // Refused without mailing: bad rating, unknown store or topic, long comment, broken body, another site; the trap is thanked silently.
+    for (const body of [{},{puan:0},{puan:6},{puan:2.5},{puan:3,magaza:'kadikoy'},{puan:3,konular:['Tarife']},{puan:3,yorum:'x'.repeat(601)}]) assert.equal((await post(JSON.stringify(body))).status,400,JSON.stringify(body).slice(0,40));
+    assert.equal((await post('{broken')).status,400);
+    assert.equal((await post(JSON.stringify({puan:4}),{origin:'https://example.com'})).status,403);
+    assert.equal((await post(JSON.stringify({puan:4,website:'http://spam.example'}))).status,200);
+    assert.equal(sent.length,2);
+    // No mailer bound, or the mailer fails: the visitor gets a retryable error, never a false thank-you.
+    assert.equal((await post(JSON.stringify({puan:4}),{withEnv:{}})).status,503);
+    assert.equal((await post(JSON.stringify({puan:4}),{withEnv:{MAILER:{fetch:async()=>Response.json({ok:false,code:'E_RATE_LIMIT_EXCEEDED'},{status:500})}}})).status,503);
+    // The mailer passes the message to its email binding and reports the service's refusal.
+    const handed=[];
+    const mailRequest=()=>new Request('https://mailer/',{method:'POST',body:JSON.stringify({...sent[0],extra:'ignored'})});
+    response=await mailer.fetch(mailRequest(),{EMAIL:{send:async message=>{handed.push(message);return {messageId:'m2'};}}});
+    assert.deepEqual(await response.json(),{ok:true,id:'m2'});
+    assert.deepEqual(Object.keys(handed[0]).sort(),['from','html','subject','text','to']);
+    response=await mailer.fetch(mailRequest(),{EMAIL:{send:async()=>{throw Object.assign(new Error('not verified'),{code:'E_SENDER_NOT_VERIFIED'});}}});
+    assert.equal(response.status,500);
+    assert.equal((await response.json()).code,'E_SENDER_NOT_VERIFIED');
+    assert.equal((await mailer.fetch(new Request('https://mailer/'),{})).status,405);
+    // The mailer's email binding only allows one sender and one recipient; they must be the ones the function uses.
+    const [binding]=JSON.parse(fs.readFileSync(path.join(__dirname,'workers/mailer/wrangler.jsonc'),'utf8').replace(/^\s*\/\/.*$/gm,'')).send_email;
+    assert.equal(binding.destination_address,sent[0].to,'Mailer recipient and function recipient differ');
+    assert.deepEqual(binding.allowed_sender_addresses,[sent[0].from],'Mailer sender and function sender differ');
+  } finally {
+    console.error=realError;
+  }
+  report.feedbackFunction={mailed:true,plainForm:true,rejectsInvalid:true,originChecked:true,botTrap:true,failureIs503:true,mailer:true};
+}
+
 (async()=>{
+  await checkFeedbackFunction();
   if(!base) await startLocalServer();
   const builtHtml=fs.readFileSync(path.join(__dirname,'dist/index.html'),'utf8');
   assert.ok(builtHtml.includes('id="hero-title"')&&(builtHtml.match(/class="station/g)||[]).length===6,'The built document must include real content before hydration');
@@ -81,8 +134,11 @@ async function statusesAt(browser, utc, errors) {
     assert.equal(await staticPage.locator('link[rel="canonical"]').getAttribute('href'),'https://zanesiletisim.info/');
     assert.equal(await staticPage.locator('meta[name="robots"]').getAttribute('content'),'index, follow');
     assert.equal(await staticPage.locator('script[type="application/ld+json"]').evaluate(e=>JSON.parse(e.textContent).telephone),'+905453636464');
+    assert.equal(await staticPage.locator('.fb-form input[name="puan"]').count(),5,'The feedback form must work as a plain form');
+    assert.equal(await staticPage.locator('.fb-form input[name="magaza"]').count(),6);
+    assert.equal(await staticPage.locator('.fb-form').getAttribute('action'),'/api/geribildirim');
     await staticPage.close();
-    result.withoutJavaScript={stores:6,hours:true,contactLinks:true,canonicalAndIndexing:true};
+    result.withoutJavaScript={stores:6,hours:true,contactLinks:true,canonicalAndIndexing:true,feedbackForm:true};
 
     // Geometry matrix: no overflow or clipped text, and the line stays straight at every width.
     const page=await browser.newPage({viewport:{width:1440,height:1000}});
@@ -174,7 +230,7 @@ async function statusesAt(browser, utc, errors) {
       watchErrors(geoPage,errors);
       await geoPage.goto(base);
       await settle(geoPage);
-      await geoPage.locator('.btn-primary').click();
+      await geoPage.locator('.hero .btn-primary').click();
       await geoPage.waitForSelector('.station.is-nearest');
       assert.equal(await geoPage.locator('.station.is-nearest').getAttribute('id'),'magaza-akasya');
       assert.match(await geoPage.locator('.geo-message').textContent(),/^Size en yakın mağaza Akasya, yaklaşık [\d,]+ (m|km)\.$/);
@@ -186,6 +242,51 @@ async function statusesAt(browser, utc, errors) {
     }
     result.nearestStore={highlighted:true,message:true,scrolledIntoView:true};
 
+    // Feedback: the face follows the rating, a missing rating is explained, and the answers are posted once.
+    for (const viewport of [{width:1440,height:1000},{width:390,height:844}]) {
+      const fbContext=await browser.newContext({viewport});
+      const fbPage=await fbContext.newPage();
+      watchErrors(fbPage,errors);
+      const posted=[];
+      await fbPage.route('**/api/geribildirim',route=>{posted.push(route.request().postDataJSON());route.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});});
+      await fbPage.goto(base);
+      await settle(fbPage);
+      await fbPage.locator('.fb-send').click();
+      await fbPage.waitForSelector('#fb-missing');
+      assert.equal(posted.length,0,'Nothing is sent without a rating');
+      await fbPage.locator('.rate-stop').nth(0).click();
+      await fbPage.waitForSelector('.fb-face[data-mood="1"]');
+      assert.equal(await fbPage.locator('#fb-missing').count(),0);
+      assert.equal(await fbPage.locator('.fb-sorry a').getAttribute('href'),'tel:+905453636464');
+      assert.equal((await fbPage.locator('.fb-step').nth(2).locator('legend').textContent()).trim(),'Neyi düzeltelim?');
+      await fbPage.locator('.rate-stop').nth(4).click();
+      await fbPage.waitForSelector('.fb-face[data-mood="5"]');
+      assert.equal(await fbPage.locator('.fb-sorry').count(),0);
+      await fbPage.locator('.chip',{hasText:'Akasya'}).click();
+      await fbPage.locator('.chip-topic',{hasText:'İşlem hızı'}).click();
+      await fbPage.locator('.fb-form textarea').fill('  Hattım 10 dakikada taşındı.  ');
+      assert.equal(await fbPage.locator('.fb-step.is-done').count(),4);
+      await fbPage.locator('.fb-send').click();
+      await fbPage.waitForSelector('.fb-done');
+      assert.deepEqual(posted,[{puan:5,magaza:'akasya',konular:['İşlem hızı'],yorum:'Hattım 10 dakikada taşındı.'}]);
+      assert.equal(await fbPage.evaluate(()=>document.activeElement.className),'fb-done');
+      await settle(fbPage);
+      await fbPage.screenshot({path:`${output}/zanes-feedback-${viewport.width}-${name}.png`});
+      await fbContext.close();
+    }
+    // A failed post keeps the answers; network errors are expected here, so only script errors count.
+    const failPage=await browser.newPage({viewport:{width:1440,height:1000}});
+    failPage.on('pageerror',e=>errors.push(e.message));
+    await failPage.route('**/api/geribildirim',route=>route.fulfill({status:503,body:''}));
+    await failPage.goto(base);
+    await failPage.locator('.rate-stop').nth(2).click();
+    await failPage.locator('.fb-send').click();
+    await failPage.waitForSelector('.fb-last .fb-alert');
+    assert.equal(await failPage.locator('.fb-done').count(),0);
+    assert.equal(await failPage.locator('input[name="puan"][value="3"]').isChecked(),true);
+    await failPage.close();
+    result.feedback={faceFollowsRating:true,missingRating:true,posted:true,failureKeepsAnswers:true};
+
     // Phone: tap targets, header call button, full-page capture.
     const touchContext=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2});
     const touchPage=await touchContext.newPage();
@@ -194,7 +295,7 @@ async function statusesAt(browser, utc, errors) {
     await settle(touchPage);
     assert.equal(await touchPage.locator('.nav').isVisible(),false);
     assert.equal((await touchPage.locator('.call').innerText()).trim(),'Ara');
-    for (const selector of ['.call','.btn','.directions']) {
+    for (const selector of ['.call','.btn','.directions','.rate-stop','.chip-face']) {
       const heights=await touchPage.locator(selector).evaluateAll(es=>es.map(e=>e.getBoundingClientRect().height));
       assert.ok(heights.every(h=>h>=44),`${name} ${selector} tap target under 44px`);
     }

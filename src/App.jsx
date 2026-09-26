@@ -3,6 +3,7 @@ import {stores, sides, contact} from './stores';
 import Icon, {ZMark} from './Icon';
 import Scene, {Stars, TrainSprite} from './Scene';
 import {serviceArt, Metro25} from './Art';
+import Feedback from './Feedback';
 import {useIstanbulMinutes, storeStatus, clockDigits, openSummary, skyPhase, distanceKm, formatDistance} from './hours';
 import {useRevealed, useOnScreen, prefersReducedMotion} from './motion';
 
@@ -243,6 +244,7 @@ export default function App() {
       <Line nearestId={finder.nearestId} now={now} />
       <Services />
       <About />
+      <Feedback />
       <Contact />
     </main>
     <Footer />

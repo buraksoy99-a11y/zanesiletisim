@@ -1,0 +1,11 @@
+{
+  "name": "zanes-geribildirim-mailer",
+  "main": "index.js",
+  "compatibility_date": "2026-04-01",
+  // No public URL; only the zanesiletisim Pages project calls it, through a service binding.
+  "workers_dev": false,
+  "preview_urls": false,
+  "send_email": [
+    {"name": "EMAIL", "destination_address": "burakaksoy@zanes.com.tr", "allowed_sender_addresses": ["geribildirim@zanesiletisim.info"]}
+  ]
+}

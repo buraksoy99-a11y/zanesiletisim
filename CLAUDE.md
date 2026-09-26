@@ -20,7 +20,7 @@ src/            — React bileşenleri, stiller, mağaza verisi ve hareketler
 index.html      — Üretim metadatası ve HTML şablonu
 build.cjs       — Statik HTML + hashli JS/CSS üretimi
 dist/           — Yalnız bu klasör yayınlanır (Git dışı)
-functions/      — Pages Function: /api/geribildirim → info@zanes.com.tr maili (deploy kökten koşulunca birlikte yüklenir)
+functions/      — Pages Function: /api/geribildirim → geribildirim maili (şimdilik burakaksoy@zanes.com.tr) (deploy kökten koşulunca birlikte yüklenir)
 workers/mailer/ — Dışa kapalı postacı Worker'ı (ayrı deploy: wrangler deploy --config workers/mailer/wrangler.jsonc)
 wrangler.toml   — Pages proje ayarları (MAILER servis bağlantısı); tek kaynak
 favicon.svg     — Kırmızı "Z" lettermark SVG favicon
@@ -40,7 +40,7 @@ sitemap.xml     — Basit sitemap (tek URL)
 3. **Mağazalarımız (hat)** — Mağazalar metro hat şeridi gibi tek kırmızı hatta durak; Boğaz'ı köprüyle geçer. 1180px altında dikey hat. Canlı açık/kapalı durumu İstanbul saatiyle hesaplanır (saatler her gün geçerli varsayılır). Saat kalkış tablosu karolarıyla; tren kaydırmayla ilerler
 4. **Hizmetler** — Telefon, aksesuar ve Vodafone işlemleri; her satırda görününce kendini çizen SVG (`src/Art.jsx`)
 5. **Hakkımızda** — 25 yıllık deneyim, Vodafone Business Partner, 4 Avrupa + 2 Anadolu mağazası; "25" metro hattı olarak çizilir
-6. **Geribildirim ("Ziyaretiniz nasıldı?")** — Puana göre ifadesi değişen SVG yüz (`src/Feedback.jsx`); puan 5 duraklı hat, sorular dikey hatta durak. Gönderince tren notu "Zanes" durağına taşır, tablo "TEŞEKKÜRLER" döner. `/api/geribildirim`e JSON gönderir (JavaScript'siz düz form); `functions/api/geribildirim.js` dışa kapalı `workers/mailer` Worker'ı (Email Service `send_email` bağlantısı) üzerinden info@zanes.com.tr'ye mail atar (Burak kararı 2026-09-25: panel yok, e-posta). Token yok; Pages bağlantıları `wrangler.toml`'da. Postacıya ulaşılamazsa 503. Kişisel bilgi alanı yok
+6. **Geribildirim ("Ziyaretiniz nasıldı?")** — Puana göre ifadesi değişen SVG yüz (`src/Feedback.jsx`); puan 5 duraklı hat, sorular dikey hatta durak. Gönderince tren notu "Zanes" durağına taşır, tablo "TEŞEKKÜRLER" döner. `/api/geribildirim`e JSON gönderir (JavaScript'siz düz form); `functions/api/geribildirim.js` dışa kapalı `workers/mailer` Worker'ı (Email Service `send_email` bağlantısı) üzerinden mail atar (Burak kararı 2026-09-25: panel yok, e-posta). Alıcı şimdilik burakaksoy@zanes.com.tr (Burak kararı 2026-09-26, info@ kutusu erişilebilir olunca oraya döner; fonksiyondaki `TO` ile postacının `destination_address`'i birlikte değişir). Token yok; Pages bağlantıları `wrangler.toml`'da. Postacıya ulaşılamazsa 503. Kişisel bilgi alanı yok
 7. **İletişim** — Kırmızı bant, büyük telefon numarası, e-posta, adres
 
 ## Mağazalar

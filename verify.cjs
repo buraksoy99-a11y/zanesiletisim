@@ -69,7 +69,7 @@ async function checkFeedbackFunction() {
   try {
     let response=await post(JSON.stringify({puan:2,magaza:'akasya',konular:['İşlem hızı'],yorum:' <b>Uzun</b> kuyruk '}));
     assert.equal(response.status,200);
-    assert.equal(sent[0].to,'info@zanes.com.tr');
+    assert.equal(sent[0].to,'burakaksoy@zanes.com.tr');
     assert.equal(sent[0].from,'geribildirim@zanesiletisim.info');
     assert.equal(sent[0].subject,'Düşük puan: 2/5 Kötü · Akasya AVM');
     assert.match(sent[0].text,/Konular: İşlem hızı\n[^]*Yorum:\n<b>Uzun<\/b> kuyruk\n/);
@@ -98,6 +98,10 @@ async function checkFeedbackFunction() {
     assert.equal(response.status,500);
     assert.equal((await response.json()).code,'E_SENDER_NOT_VERIFIED');
     assert.equal((await mailer.fetch(new Request('https://mailer/'),{})).status,405);
+    // The mailer's email binding only allows one sender and one recipient; they must be the ones the function uses.
+    const [binding]=JSON.parse(fs.readFileSync(path.join(__dirname,'workers/mailer/wrangler.jsonc'),'utf8').replace(/^\s*\/\/.*$/gm,'')).send_email;
+    assert.equal(binding.destination_address,sent[0].to,'Mailer recipient and function recipient differ');
+    assert.deepEqual(binding.allowed_sender_addresses,[sent[0].from],'Mailer sender and function sender differ');
   } finally {
     console.error=realError;
   }

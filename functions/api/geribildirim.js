@@ -30,7 +30,7 @@ export function composeMail({puan, store, konular, yorum}, now = new Date()) {
   // Low ratings lead the subject so they stand out in the inbox.
   const subject = `${puan <= 2 ? 'Düşük puan' : 'Geribildirim'}: ${puan}/5 ${ratings[puan - 1]} · ${where}`;
   const rows = [['Puan', `${puan}/5 (${ratings[puan - 1]})`], ['Mağaza', where], ['Konular', konular.join(', ') || '—'], ['Tarih', when]];
-  const footer = 'zanesiletisim.info geribildirim formundan gönderildi.';
+  const footer = 'zanesiletisim.com geribildirim formundan gönderildi.';
   const text = [...rows.map(([label, value]) => `${label}: ${value}`), '', 'Yorum:', yorum || '—', '', footer].join('\n');
   const html = `<table style="border-collapse:collapse;font:15px/1.5 Arial,sans-serif">${rows.map(([label, value]) => `<tr><td style="padding:4px 16px 4px 0;color:#5b5b5b">${label}</td><td style="padding:4px 0;font-weight:bold">${escapeHtml(value)}</td></tr>`).join('')}</table>`
     + `<p style="font:bold 15px Arial,sans-serif;margin:20px 0 6px">Yorum</p><p style="font:15px/1.5 Arial,sans-serif;white-space:pre-wrap;margin:0">${escapeHtml(yorum || '—')}</p>`

@@ -64,7 +64,7 @@ async function checkFeedbackFunction() {
   const mailer=(await bundle('workers/mailer/index.js','.build/feedback-mailer.cjs')).default;
   const sent=[],realError=console.error;
   const env={MAILER:{fetch:async(url,init)=>{sent.push(JSON.parse(init.body));return Response.json({ok:true,id:'m1'});}}};
-  const post=(body,{type='application/json',origin='https://zanesiletisim.info',withEnv=env}={})=>onRequestPost({env:withEnv,request:new Request('https://zanesiletisim.info/api/geribildirim',{method:'POST',headers:{'Content-Type':type,Origin:origin},body})});
+  const post=(body,{type='application/json',origin='https://zanesiletisim.com',withEnv=env}={})=>onRequestPost({env:withEnv,request:new Request('https://zanesiletisim.com/api/geribildirim',{method:'POST',headers:{'Content-Type':type,Origin:origin},body})});
   console.error=()=>{};
   try {
     let response=await post(JSON.stringify({puan:2,magaza:'akasya',konular:['İşlem hızı'],yorum:' <b>Uzun</b> kuyruk '}));
@@ -114,7 +114,7 @@ async function checkFeedbackFunction() {
   const builtHtml=fs.readFileSync(path.join(__dirname,'dist/index.html'),'utf8');
   assert.ok(builtHtml.includes('id="hero-title"')&&(builtHtml.match(/class="station/g)||[]).length===6,'The built document must include real content before hydration');
   assert.ok(!builtHtml.includes('noindex'));
-  assert.ok(builtHtml.includes('href="https://zanesiletisim.info/"'));
+  assert.ok(builtHtml.includes('href="https://zanesiletisim.com/"'));
   assert.ok(builtHtml.includes('<!--email_off--><div id="root">')&&builtHtml.includes('<!--/email_off-->'),'Preserve React HTML under Cloudflare email obfuscation');
   assert.ok(!fs.readdirSync(path.join(__dirname,'dist/assets')).some(file=>file.endsWith('.map')));
 
@@ -131,7 +131,7 @@ async function checkFeedbackFunction() {
     assert.ok(await staticPage.locator('a[href="tel:+905453636464"]').count()>=3);
     assert.equal(await staticPage.locator('a[href="mailto:info@zanes.com.tr"]').count(),1);
     assert.equal((await staticPage.locator('.big-phone').innerText()).trim(),'0545 363 64 64','The rolling counter must fall back to the plain number');
-    assert.equal(await staticPage.locator('link[rel="canonical"]').getAttribute('href'),'https://zanesiletisim.info/');
+    assert.equal(await staticPage.locator('link[rel="canonical"]').getAttribute('href'),'https://zanesiletisim.com/');
     assert.equal(await staticPage.locator('meta[name="robots"]').getAttribute('content'),'index, follow');
     assert.equal(await staticPage.locator('script[type="application/ld+json"]').evaluate(e=>JSON.parse(e.textContent).telephone),'+905453636464');
     assert.equal(await staticPage.locator('.fb-form input[name="puan"]').count(),5,'The feedback form must work as a plain form');

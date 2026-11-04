@@ -1,4 +1,4 @@
-# zanesiletisim.info — Zanes İletişim Kurumsal Web Sitesi
+# zanesiletisim.com — Zanes İletişim Kurumsal Web Sitesi
 
 ## Proje Özeti
 Zanes İletişim'in (Vodafone Business Partner) kurumsal tanıtım sitesi. "İki yaka" hat tasarımı (Eylül 2026, 16 Eylül GPT tasarımının yerine), İstanbul'daki 6 mağazayı tanıtır. Geliştirme/yayın ayrıntıları README.md içindedir.
@@ -11,7 +11,7 @@ Zanes İletişim'in (Vodafone Business Partner) kurumsal tanıtım sitesi. "İki
 | İkonlar | Yerel SVG bileşenleri |
 | Font | Yerel DM Sans |
 | Deploy | esbuild + React prerender → Cloudflare Pages `dist/` |
-| Domain | `zanesiletisim.info` (Cloudflare DNS, CNAME → `zanesiletisim.pages.dev`) |
+| Domain | `zanesiletisim.com` + `www` (Cloudflare DNS, Pages custom domain → `zanesiletisim.pages.dev`). Eski `zanesiletisim.info` 3 Kasım 2026'dan beri .com'a yönlenir ve 31 Ocak 2027'ye kadar kaldırılır; geribildirim göndericisi `geribildirim@zanesiletisim.info` (Email Routing yalnız .info'da) o tarihe kadar .com'a taşınır |
 | GitHub | `buraksoy99-a11y/zanesiletisim` |
 
 ## Dosya Yapısı

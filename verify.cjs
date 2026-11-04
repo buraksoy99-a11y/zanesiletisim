@@ -70,7 +70,7 @@ async function checkFeedbackFunction() {
     let response=await post(JSON.stringify({puan:2,magaza:'akasya',konular:['İşlem hızı'],yorum:' <b>Uzun</b> kuyruk '}));
     assert.equal(response.status,200);
     assert.equal(sent[0].to,'burakaksoy@zanes.com.tr');
-    assert.equal(sent[0].from,'geribildirim@zanesiletisim.info');
+    assert.equal(sent[0].from,'geribildirim@zanesiletisim.com');
     assert.equal(sent[0].subject,'Düşük puan: 2/5 Kötü · Akasya AVM');
     assert.match(sent[0].text,/Konular: İşlem hızı\n[^]*Yorum:\n<b>Uzun<\/b> kuyruk\n/);
     assert.ok(sent[0].html.includes('&lt;b&gt;Uzun&lt;/b&gt; kuyruk')&&!sent[0].html.includes('<b>Uzun'),'Comments are escaped in the HTML mail');
@@ -101,7 +101,8 @@ async function checkFeedbackFunction() {
     // The mailer's email binding only allows one sender and one recipient; they must be the ones the function uses.
     const [binding]=JSON.parse(fs.readFileSync(path.join(__dirname,'workers/mailer/wrangler.jsonc'),'utf8').replace(/^\s*\/\/.*$/gm,'')).send_email;
     assert.equal(binding.destination_address,sent[0].to,'Mailer recipient and function recipient differ');
-    assert.deepEqual(binding.allowed_sender_addresses,[sent[0].from],'Mailer sender and function sender differ');
+    // The mailer may also list the old .info sender while the site moves; the function's sender must be on it.
+    assert.ok(binding.allowed_sender_addresses.includes(sent[0].from),'Mailer does not allow the function sender');
   } finally {
     console.error=realError;
   }

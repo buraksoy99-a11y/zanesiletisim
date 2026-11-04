@@ -6,7 +6,7 @@ import {ratings, topics, COMMENT_MAX, TRAP_FIELD} from '../../src/feedback-field
 // Burak's inbox for now (2026-09-26); info@zanes.com.tr takes over once someone with that inbox verifies it.
 // Must match destination_address in workers/mailer/wrangler.jsonc, or the mailer refuses the message.
 const TO = 'burakaksoy@zanes.com.tr';
-const FROM = 'geribildirim@zanesiletisim.info';
+const FROM = 'geribildirim@zanesiletisim.com';
 const MAX_BODY = 8192;
 
 const escapeHtml = text => text.replace(/[&<>"']/g, ch => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'})[ch]);

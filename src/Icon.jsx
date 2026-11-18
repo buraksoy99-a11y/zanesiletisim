@@ -6,6 +6,8 @@ const paths = {
   external: <path d="M14 5h5v5m0-5-8 8m7 1v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4" />,
   send: <><path d="M21 3 3 10.5l7.5 3L13.5 21 21 3Z" /><path d="m10.5 13.5 4-4" /></>,
   check: <path pathLength="1" d="m5 12.5 4.5 4.5L19 7.5" />,
+  arrowDown: <path d="M12 5v14m-6-6 6 6 6-6" />,
+  pin: <><path d="M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10Z" /><circle cx="12" cy="11" r="2" /></>,
   toggle: <><path className="i-plus" d="M12 5v14M5 12h14" /><path className="i-tick" pathLength="1" d="m5 12.5 4.5 4.5L19 7.5" /></>,
 };
 
@@ -16,9 +18,10 @@ export default function Icon({name, className = ''}) {
 // Company "rounded-z" geometry (AutomationLocal brand/zanes-v1) on a red tile, in 64-unit space.
 export const Z_PATH = 'M11 16Q11 13 14 13L50 13Q53 13 53 16L53 19.6Q53 22 51.08 23.44L30.92 38.56Q29 40 31.4 40L50 40Q53 40 53 43L53 48Q53 51 50 51L14 51Q11 51 11 48L11 44.4Q11 42 12.92 40.56L33.08 25.44Q35 24 32.6 24L14 24Q11 24 11 21Z';
 
-export function ZMark({className = ''}) {
+// On the red hero panel the tile turns white so the mark stays visible.
+export function ZMark({className = '', light = false}) {
   return <svg className={`zmark ${className}`} viewBox="0 0 64 64" aria-hidden="true" focusable="false">
-    <rect width="64" height="64" rx="15" fill="#e60000" />
-    <path fill="#fff" d={Z_PATH} />
+    <rect width="64" height="64" rx="15" fill={light ? '#fff' : '#e60000'} />
+    <path fill={light ? '#e60000' : '#fff'} d={Z_PATH} />
   </svg>;
 }

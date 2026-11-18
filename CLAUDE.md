@@ -1,7 +1,7 @@
 # zanesiletisim.com — Zanes İletişim Kurumsal Web Sitesi
 
 ## Proje Özeti
-Zanes İletişim'in (Vodafone Business Partner) kurumsal tanıtım sitesi. "İki yaka" hat tasarımı (Eylül 2026, 16 Eylül GPT tasarımının yerine), İstanbul'daki 6 mağazayı tanıtır. Geliştirme/yayın ayrıntıları README.md içindedir.
+Zanes İletişim'in (Vodafone Business Partner) kurumsal tanıtım sitesi. "Kırmızı panel + halftone" tasarımı (Kasım 2026, "İki yaka" hat tasarımının yerine; Burak 2026-11-18: Details'teki a1mobile açılışı tek görsel dil, başka sitelerden bölüm birleştirme yok), İstanbul'daki 6 mağazayı tanıtır. Geliştirme/yayın ayrıntıları README.md içindedir.
 
 ## Teknik Stack
 | Karar | Değer |
@@ -29,19 +29,19 @@ sitemap.xml     — Basit sitemap (tek URL)
 ```
 
 ## Renk Paleti (Vodafone kırmızı — bayi uyumu)
-- Primary: `#e60000` (Vodafone kırmızısı)
-- Background: `#f5f5f5`
-- Text: `#171717`; nötr siyah/beyaz/gri
-- Light theme
+- Primary: `#e60000` (Vodafone kırmızısı); kırmızı yuvarlak paneller
+- Background: `#f6f4ef` (kâğıt beyazı); krem panel `#ece4d8`
+- Text: `#141414`; halftone mürekkebi `#fff4ee` (kırmızı üstü), `#1d0606` (kule)
+- Light theme (Burak 2026-11-18: açık)
 
 ## Site Bölümleri
-1. **Üst menü** — Rounded-Z işareti, masaüstünde 4 bağlantı + telefon düğmesi; telefonda yalnız "Ara" düğmesi (hamburger yok)
-2. **Hero** — "İki yaka, altı mağaza." + "En yakın mağazayı bul" (konum yalnız tarayıcıda hesaplanır, dışarı gönderilmez). Altında SVG Boğaz panoraması (`src/Scene.jsx`): gökyüzü İstanbul saatine göre `data-phase` day/dawn/dusk/night (gece hero koyu, yazı beyaz — Burak onayı 2026-09-25), mağaza pinleri açık/kapalı, köprüden geçen tren. Telefonda panorama iki yaka arasında yavaşça kayar
-3. **Mağazalarımız (hat)** — Mağazalar metro hat şeridi gibi tek kırmızı hatta durak; Boğaz'ı köprüyle geçer. 1180px altında dikey hat. Canlı açık/kapalı durumu İstanbul saatiyle hesaplanır (saatler her gün geçerli varsayılır). Saat kalkış tablosu karolarıyla; tren kaydırmayla ilerler
-4. **Hizmetler** — Telefon, aksesuar ve Vodafone işlemleri; her satırda görününce kendini çizen SVG (`src/Art.jsx`)
-5. **Hakkımızda** — 25 yıllık deneyim, Vodafone Business Partner, 4 Avrupa + 2 Anadolu mağazası; "25" metro hattı olarak çizilir
-6. **Geribildirim ("Ziyaretiniz nasıldı?")** — Puana göre ifadesi değişen SVG yüz (`src/Feedback.jsx`); puan 5 duraklı hat, sorular dikey hatta durak. Gönderince tren notu "Zanes" durağına taşır, tablo "TEŞEKKÜRLER" döner. `/api/geribildirim`e JSON gönderir (JavaScript'siz düz form); `functions/api/geribildirim.js` dışa kapalı `workers/mailer` Worker'ı (Email Service `send_email` bağlantısı) üzerinden mail atar (Burak kararı 2026-09-25: panel yok, e-posta). Alıcı şimdilik burakaksoy@zanes.com.tr (Burak kararı 2026-09-26, info@ kutusu erişilebilir olunca oraya döner; fonksiyondaki `TO` ile postacının `destination_address`'i birlikte değişir). Token yok; Pages bağlantıları `wrangler.toml`'da. Postacıya ulaşılamazsa 503. Kişisel bilgi alanı yok
-7. **İletişim** — Kırmızı bant, büyük telefon numarası, e-posta, adres
+1. **Menü** (`src/Nav.jsx`) — Details Vault "Top Morphing Navigation": üstte ortada buzlu koyu çubuk (Z işareti + menü düğmesi); basınca panele dönüşür, linkler sırayla gelir, her linkin yanında halftone önizleme değişir. Aşağı kaydırınca saklanır, yukarı kaydırınca döner. `motion` paketiyle (sürüm sabit). Esc/dışarı tıklama kapatır, odak düğmeye döner
+2. **Açılış** — Kırmızı yuvarlak panel: halftone bulutlar ve baz istasyonu kulesi (`src/halftone.js`, canvas), bir kez gelip duran pankartlı uçak, mağaza adlarını döndüren üst satır. "Telefon, hat ve fatura. Hepsi tek adreste." + "En yakın mağaza" (konum yalnız tarayıcıda hesaplanır, dışarı gönderilmez) + Vault "Arrow Shift" cam buton "Bizi arayın"
+3. **Hizmetler** — Telefon, aksesuar, Vodafone işlemleri; her biri kırmızı halftone çizimli kart + kâğıt etiket
+4. **Mağazalar** — Krem panel: mağaza listesi (canlı açık/kapalı İstanbul saatiyle, saatler her gün geçerli varsayılır; yol tarifi) + halftone İstanbul haritası, numaralı pinler (kapalı mağaza gri). Satır ↔ pin üzerine gelince birlikte yanar. Pin konumu `stores.js` `mx/my`
+5. **Geribildirim ("Ziyaretiniz nasıldı?")** — Krem panelde. Puana göre ifadesi değişen SVG yüz (`src/Feedback.jsx`); puan 5 duraklı hat, sorular dikey hatta durak. Gönderince tren notu "Zanes" durağına taşır, tablo "TEŞEKKÜRLER" döner. `/api/geribildirim`e JSON gönderir (JavaScript'siz düz form); `functions/api/geribildirim.js` dışa kapalı `workers/mailer` Worker'ı (Email Service `send_email` bağlantısı) üzerinden mail atar (Burak kararı 2026-09-25: panel yok, e-posta). Alıcı şimdilik burakaksoy@zanes.com.tr (Burak kararı 2026-09-26, info@ kutusu erişilebilir olunca oraya döner; fonksiyondaki `TO` ile postacının `destination_address`'i birlikte değişir). Token yok; Pages bağlantıları `wrangler.toml`'da. Postacıya ulaşılamazsa 503. Kişisel bilgi alanı yok
+6. **İletişim** — Kırmızı panel + halftone bulutlar: "Arayın, yardımcı olalım.", telefon düğmesi, e-posta (cam buton), adres
+7. **Alt bilgi** — Logo + "Teknolojiye güvenle ulaşın.", mağaza ve sayfa sütunları
 
 ## Mağazalar
 | Site Adı | Ambar Kodu | Saat |
@@ -68,7 +68,8 @@ npx wrangler@4.132.0 pages deploy dist --project-name zanesiletisim --branch mai
 ## Kurallar
 - **Türkçe karakterler zorunlu** (ş, ç, ğ, ı, ö, ü) tüm UI text'lerinde
 - **Build zorunlu** — yalnız `dist/` yayınlanır; kök şablon veya kaynak klasörü yayınlanmaz. Onaylı tasarım korunur.
-- **Harici görsel yok** — CSS/SVG çizimleri ve yerel DM Sans kullanılır.
-- **Mağaza verisi tek yerde** — `src/stores.js` (hat sırası, saatler, yaklaşık koordinat, harita hedefi). Harita linkleri `tests/map-links.json` ile korunur.
+- **Harici görsel yok** — CSS/SVG/canvas halftone çizimleri ve yerel DM Sans kullanılır (menü önizlemeleri de halftone, fotoğraf değil).
+- **Tek görsel dil** — Yeni bölüm başka bir siteden referansla eklenmez; açılışın dili (kırmızı/krem panel, grain, halftone) sürdürülür (Burak 2026-11-18).
+- **Mağaza verisi tek yerde** — `src/stores.js` (sıra, saatler, yaklaşık koordinat, harita üstündeki `mx/my`, harita hedefi). Harita linkleri `tests/map-links.json` ile korunur.
 - **Teknik servis/tamir yok** — hizmetlerde sadece telefon satışı ve aksesuar
 - **Tarife/paket bilgisi yok** — Vodafone'un işi, bayinin değil

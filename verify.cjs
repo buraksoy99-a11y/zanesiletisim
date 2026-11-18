@@ -26,6 +26,9 @@ async function startLocalServer() {
 }
 
 async function settle(page) {
+  // React hydrates after the load event; the menu controller sizes its panel in the same commit as every other effect.
+  // Measuring before that measured the server HTML (the closed menu's links once read as clipped at 1024 in WebKit).
+  await page.waitForFunction(()=>!!document.querySelector('[data-content]')?.style.width);
   await page.evaluate(async () => {
     await document.fonts.ready;
     await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
@@ -196,14 +199,25 @@ async function checkFeedbackFunction() {
     await page.screenshot({path:`${output}/zanes-desktop-${name}.png`});
     await page.screenshot({path:`${output}/zanes-desktop-full-${name}.png`,fullPage:true});
     const menu=page.locator('[data-nav-view]');
+    // A menu link scrolls down to its section and the bar slides away on the way down, as designed; scrolling back up
+    // brings it back. The check takes that same path. Clicking the button right after a link raced the slide and, in
+    // WebKit, waited on a bar that had already left the screen.
+    const backToTop=async()=>{
+      await page.evaluate(()=>scrollTo({top:0,behavior:'instant'}));
+      await page.waitForFunction(()=>document.querySelector('[data-header]').getBoundingClientRect().top>-.5);
+    };
     for (const hash of ['#hizmetler','#magazalar','#geribildirim','#iletisim']) {
+      await backToTop();
       await page.locator('[data-toggle]').click();
       assert.equal(await menu.getAttribute('data-open'),'true');
       assert.equal(await page.locator('[data-content]').evaluate(e=>e.inert),false);
       await page.locator(`[data-links] a[href="${hash}"]`).click();
       assert.equal(new URL(page.url()).hash,hash);
       assert.equal(await menu.getAttribute('data-open'),'false');
+      // The link lands its section under the 24px scroll padding, or the page bottoms out on the way.
+      await page.waitForFunction(target=>{const top=document.querySelector(target).getBoundingClientRect().top;return Math.abs(top-24)<2||scrollY+innerHeight>=document.documentElement.scrollHeight-2;},hash);
     }
+    await backToTop();
     await page.locator('[data-toggle]').click();
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('[data-toggle]').getAttribute('aria-expanded'),'false');
@@ -257,6 +271,11 @@ async function checkFeedbackFunction() {
       await fbPage.route('**/api/geribildirim',route=>{posted.push(route.request().postDataJSON());route.fulfill({status:200,contentType:'application/json',body:'{"ok":true}'});});
       await fbPage.goto(base);
       await settle(fbPage);
+      // Near its section the face settles on the 3D phone (a taller box) or stays the SVG. The form is used after that
+      // decision; a jump straight to the button could otherwise click while the box grows.
+      await fbPage.locator('.fb-face').scrollIntoViewIfNeeded();
+      await fbPage.waitForFunction(()=>['3d','svg'].includes(document.querySelector('.fb-face').dataset.phone));
+      (result.faceRenderer??={})[viewport.width]=await fbPage.locator('.fb-face').getAttribute('data-phone');
       await fbPage.locator('.fb-send').click();
       await fbPage.waitForSelector('#fb-missing');
       assert.equal(posted.length,0,'Nothing is sent without a rating');

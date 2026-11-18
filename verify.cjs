@@ -9,7 +9,7 @@ fs.mkdirSync(output,{recursive:true});
 let base = process.env.BASE_URL;
 let localServer;
 const originalMaps = require('./tests/map-links.json');
-const report = {design:'iki-yaka-canli-istanbul',productionBuild:true,engines:[]};
+const report = {design:'kirmizi-panel-halftone',productionBuild:true,engines:[]};
 
 async function startLocalServer() {
   const dist=path.join(__dirname,'dist');
@@ -48,10 +48,9 @@ async function statusesAt(browser, utc, errors) {
   await page.goto(base);
   await page.waitForFunction(()=>document.querySelector('.status').textContent.trim().length>0);
   const result={
-    caption:(await page.locator('.hat-caption').textContent()).trim(),
+    caption:(await page.locator('.stores-caption').textContent()).trim(),
     stations:Object.fromEntries(await page.locator('.station').evaluateAll(es=>es.map(e=>[e.id.replace('magaza-',''),e.querySelector('.status').textContent.trim()]))),
-    phase:await page.locator('.hero').getAttribute('data-phase'),
-    closedPins:await page.locator('.scene .pin.is-closed').count(),
+    closedPins:await page.locator('.map .pin.is-closed').count(),
   };
   await context.close();
   return result;
@@ -150,46 +149,45 @@ async function checkFeedbackFunction() {
       await settle(page);
       const geometry=await page.evaluate(()=>{
         const clipped=[...document.querySelectorAll('h1,h2,h3,p,address,a,dd')].filter(e=>{const r=e.getBoundingClientRect();return r.width>0&&!e.closest('.sr-only')&&(r.left<-.5||r.right>innerWidth+.5||e.scrollWidth>e.clientWidth+1);}).map(e=>e.textContent.trim().slice(0,40));
-        const markers=[...document.querySelectorAll('.marker')].map(e=>e.getBoundingClientRect());
-        const statuses=[...document.querySelectorAll('.status')].map(e=>Math.round(e.getBoundingClientRect().top));
-        const rail=getComputedStyle(document.querySelector('.hat'),'::before');
-        const hat=document.querySelector('.hat').getBoundingClientRect();
+        const box=e=>e.getBoundingClientRect();
+        const hit=(a,b)=>a.left<b.right-.5&&b.left<a.right-.5&&a.top<b.bottom-.5&&b.top<a.bottom-.5;
+        // Each store row: the directions pill never covers the name, status/hours or address.
+        const rowCollisions=[...document.querySelectorAll('.station')].filter(row=>{const d=box(row.querySelector('.directions'));return ['h3','.store-meta','address'].some(sel=>hit(d,box(row.querySelector(sel))));}).map(row=>row.id);
+        const rowsOverlap=[...document.querySelectorAll('.station')].map(box).some((r,i,all)=>i>0&&r.top<all[i-1].bottom-.5&&r.left<all[i-1].right&&all[i-1].left<r.right);
+        // Map pins stay apart and inside the map.
+        const map=box(document.querySelector('.map'));
+        const pins=[...document.querySelectorAll('.map .pin')].map(box);
+        const pinsOverlap=pins.some((a,i)=>pins.some((b,j)=>j>i&&hit(a,b)));
+        const pinsOutside=pins.filter(p=>p.left<map.left-.5||p.right>map.right+.5||p.top<map.top-.5||p.bottom>map.bottom+.5).length;
         const h1=document.querySelector('h1').getBoundingClientRect(),side=document.querySelector('.hero-side').getBoundingClientRect();
         // Name the widest offenders so an overflow on another platform is diagnosable from the CI log.
-        const wide=[...document.querySelectorAll('body *')].filter(e=>e.getBoundingClientRect().right>innerWidth+.5&&!e.closest('.lines')).map(e=>`${e.tagName.toLowerCase()}.${e.className||''} right=${Math.round(e.getBoundingClientRect().right)}`).slice(0,8);
+        const wide=[...document.querySelectorAll('body *')].filter(e=>e.getBoundingClientRect().right>innerWidth+.5&&!e.closest('.hero,[data-nav-view]')).map(e=>`${e.tagName.toLowerCase()}.${e.className||''} right=${Math.round(e.getBoundingClientRect().right)}`).slice(0,8);
         return {width:innerWidth,scroll:document.documentElement.scrollWidth,clipped,wide,
           brokenAnchors:[...document.querySelectorAll('a[href^="#"]')].filter(a=>a.hash&&!document.getElementById(a.hash.slice(1))).map(a=>a.hash),
-          markerTops:[...new Set(markers.map(r=>Math.round(r.top)))],markerLefts:[...new Set(markers.map(r=>Math.round(r.left)))],
-          markerCenterY:Math.round(markers[0].top+markers[0].height/2-hat.top),railCenterY:Math.round(parseFloat(rail.top)+parseFloat(rail.height)/2),
-          railCenterX:Math.round(parseFloat(rail.left)+parseFloat(rail.width)/2),markerCenterX:Math.round(markers[0].left+markers[0].width/2-hat.left),
-          statusTops:[...new Set(statuses)],heroOverlap:h1.right>side.left&&h1.bottom>side.top&&side.bottom>h1.top};
+          rowCollisions,rowsOverlap,pinsOverlap,pinsOutside,heroOverlap:h1.right>side.left&&h1.bottom>side.top&&side.bottom>h1.top};
       });
       assert.equal(geometry.width,geometry.scroll,`${name} document overflow at ${width}: ${geometry.wide.join(' | ')}`);
       assert.deepEqual(geometry.brokenAnchors,[]);
       assert.deepEqual(geometry.clipped,[],`${name} text/control clipping at ${width}`);
       assert.equal(geometry.heroOverlap,false,`${name} hero heading overlaps copy at ${width}`);
-      if (width>=1180) {
-        assert.equal(geometry.markerTops.length,1,`${name} stations off the line at ${width}`);
-        assert.ok(Math.abs(geometry.markerCenterY-geometry.railCenterY)<=1,`${name} markers not centered on the line at ${width}`);
-        assert.equal(geometry.statusTops.length,1,`${name} station rows misaligned at ${width}`);
-      } else {
-        assert.equal(geometry.markerLefts.length,1,`${name} vertical stations off the line at ${width}`);
-        assert.ok(Math.abs(geometry.markerCenterX-geometry.railCenterX)<=1,`${name} markers not centered on the vertical line at ${width}`);
-      }
-      result.widths.push({width,overflow:false,clipping:false,lineAligned:true});
+      assert.deepEqual(geometry.rowCollisions,[],`${name} directions pill covers store text at ${width}`);
+      assert.equal(geometry.rowsOverlap,false,`${name} store rows overlap at ${width}`);
+      assert.equal(geometry.pinsOverlap,false,`${name} map pins overlap at ${width}`);
+      assert.equal(geometry.pinsOutside,0,`${name} map pins outside the map at ${width}`);
+      result.widths.push({width,overflow:false,clipping:false,storeRows:true,mapPins:true});
     }
-    assert.equal(await page.locator('.hat').evaluate(e=>getComputedStyle(e,'::before').animationName),'none');
-    result.reducedMotion={noLineAnimation:true};
+    assert.equal(await page.locator('.plane').evaluate(e=>getComputedStyle(e).animationName),'none');
+    result.reducedMotion={noPlaneFlight:true};
 
     // Page load: hydrated React, one line animation, brand and content invariants.
     await page.setViewportSize({width:1440,height:1000});
     await page.emulateMedia({reducedMotion:'no-preference'});
     await page.goto(base);
-    assert.equal(await page.locator('.hat').evaluate(e=>getComputedStyle(e,'::before').animationName),'draw-x');
+    assert.equal(await page.locator('.plane').evaluate(e=>getComputedStyle(e).animationName),'arrive');
     await settle(page);
     assert.equal(await page.locator('#root').evaluate(e=>Object.keys(e).some(k=>k.startsWith('__reactContainer'))),true);
     assert.equal(await page.locator('.header .zmark rect').getAttribute('fill'),'#e60000');
-    assert.equal(await page.locator('.hat').evaluate(e=>getComputedStyle(e,'::before').backgroundColor),'rgb(230, 0, 0)');
+    assert.equal(await page.locator('.hero').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(230, 0, 0)');
     assert.equal(await page.locator('.contact').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(230, 0, 0)');
     assert.equal(await page.locator('h1').count(),1);
     assert.equal(await page.locator('svg:not([aria-hidden="true"])').count(),0);
@@ -197,31 +195,39 @@ async function checkFeedbackFunction() {
     assert.equal(await page.locator('.big-phone').getAttribute('href'),'tel:+905453636464');
     await page.screenshot({path:`${output}/zanes-desktop-${name}.png`});
     await page.screenshot({path:`${output}/zanes-desktop-full-${name}.png`,fullPage:true});
-    for (const [hash] of [['#magazalar'],['#hizmetler'],['#hakkimizda'],['#iletisim']]) {
-      await page.locator(`.nav a[href="${hash}"]`).click();
+    const menu=page.locator('[data-nav-view]');
+    for (const hash of ['#hizmetler','#magazalar','#geribildirim','#iletisim']) {
+      await page.locator('[data-toggle]').click();
+      assert.equal(await menu.getAttribute('data-open'),'true');
+      assert.equal(await page.locator('[data-content]').evaluate(e=>e.inert),false);
+      await page.locator(`[data-links] a[href="${hash}"]`).click();
       assert.equal(new URL(page.url()).hash,hash);
+      assert.equal(await menu.getAttribute('data-open'),'false');
     }
-    result.content={reactRoot:true,redLine:true,mapLinksPreserved:true,navigation:true};
+    await page.locator('[data-toggle]').click();
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('[data-toggle]').getAttribute('aria-expanded'),'false');
+    assert.equal(await page.evaluate(()=>document.activeElement.hasAttribute('data-toggle')),true,'Focus returns to the menu button');
+    assert.equal(await page.locator('[data-content]').evaluate(e=>e.inert),true);
+    result.content={reactRoot:true,redPanel:true,mapLinksPreserved:true,navigation:true};
 
     // Live status follows Istanbul time, independent of the visitor's clock zone.
     const midday=await statusesAt(browser,'2026-09-24T11:00:00Z',errors);
     assert.match(midday.caption,/saat 14:00\. Altı mağazamızın hepsi şu an açık\./);
     assert.equal(midday.stations.akasya,'Açık, kapanış 22:00');
     assert.equal(midday.stations.mecidiyekoy,'Açık, kapanış 21:00');
-    assert.equal(midday.phase,'day');
     assert.equal(midday.closedPins,0);
     const evening=await statusesAt(browser,'2026-09-24T18:30:00Z',errors);
     assert.match(evening.caption,/saat 21:30\. Altı mağazamızın dördü şu an açık\./);
     assert.equal(evening.stations.cevahir,'Açık, kapanışa 30 dk');
     assert.equal(evening.stations.bagdat,'Kapalı, açılış 09:00');
-    // The panorama follows the same clock: night sky, and the two 21:00 stores go grey.
-    assert.equal(evening.phase,'night');
+    // The map follows the same clock: the two 21:00 stores go grey.
     assert.equal(evening.closedPins,2);
     const night=await statusesAt(browser,'2026-09-24T21:30:00Z',errors);
     assert.match(night.caption,/saat 00:30\. Mağazalarımız şu an kapalı, ilk açılış 09:00\./);
     assert.equal(night.stations.istinyepark,'Kapalı, açılış 10:00');
     assert.equal(night.closedPins,6);
-    result.liveStatus={midday:true,closingSoon:true,night:true,skyAndPins:true};
+    result.liveStatus={midday:true,closingSoon:true,night:true,mapPins:true};
 
     // "En yakın mağazayı bul": a visitor near Acıbadem gets Akasya highlighted.
     for (const viewport of [{width:1440,height:1000},{width:390,height:844}]) {
@@ -293,16 +299,21 @@ async function checkFeedbackFunction() {
     watchErrors(touchPage,errors);
     await touchPage.goto(base);
     await settle(touchPage);
-    assert.equal(await touchPage.locator('.nav').isVisible(),false);
-    assert.equal((await touchPage.locator('.call').innerText()).trim(),'Ara');
-    for (const selector of ['.call','.btn','.directions','.rate-stop','.chip-face']) {
+    assert.equal(await touchPage.locator('[data-toggle]').getAttribute('aria-expanded'),'false');
+    assert.equal(await touchPage.locator('[data-content]').evaluate(e=>e.inert),true,'Closed menu links are out of reach');
+    for (const selector of ['[data-toggle]','.btn','.button-05','.directions','.rate-stop','.chip-face']) {
       const heights=await touchPage.locator(selector).evaluateAll(es=>es.map(e=>e.getBoundingClientRect().height));
       assert.ok(heights.every(h=>h>=44),`${name} ${selector} tap target under 44px`);
     }
     await touchPage.screenshot({path:`${output}/zanes-mobile-${name}.png`});
     await touchPage.screenshot({path:`${output}/zanes-mobile-full-${name}.png`,fullPage:true});
+    // The opened menu fills the phone screen.
+    await touchPage.locator('[data-toggle]').click();
+    await touchPage.waitForFunction(()=>Math.abs(document.querySelector('[data-panel]').getBoundingClientRect().width-innerWidth)<1);
+    await touchPage.screenshot({path:`${output}/zanes-mobile-menu-${name}.png`});
+    await touchPage.locator('[data-toggle]').click();
     await touchContext.close();
-    result.mobile={tapTargets44:true,compactHeader:true};
+    result.mobile={tapTargets44:true,menuFillsScreen:true};
 
     assert.deepEqual(errors,[]);result.errors=errors;report.engines.push(result);
     await browser.close();

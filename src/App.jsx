@@ -1,26 +1,22 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {stores, sides, contact} from './stores';
 import Icon, {ZMark} from './Icon';
-import Scene, {Stars, TrainSprite} from './Scene';
-import {serviceArt, Metro25} from './Art';
+import Nav from './Nav';
+import {TrainSprite} from './Train';
 import Feedback from './Feedback';
-import {useIstanbulMinutes, storeStatus, clockDigits, openSummary, skyPhase, distanceKm, formatDistance} from './hours';
-import {useRevealed, useOnScreen, prefersReducedMotion} from './motion';
+import {useIstanbulMinutes, storeStatus, clockDigits, openSummary, distanceKm, formatDistance} from './hours';
+import {useOnScreen, prefersReducedMotion} from './motion';
+import {useHalftone, drawClouds, drawTower, drawCardArt, drawMap, mapWindow} from './halftone';
 
-const navigation = [['#magazalar', 'Mağazalar'], ['#hizmetler', 'Hizmetler'], ['#hakkimizda', 'Hakkımızda'], ['#iletisim', 'İletişim']];
+const sections = [['#hizmetler', 'Hizmetler'], ['#magazalar', 'Mağazalar'], ['#geribildirim', 'Geri bildirim'], ['#iletisim', 'İletişim']];
+const mapsUrl = store => `https://www.google.com/maps/dir/?api=1&destination=${store.maps}`;
 
-function Brand() {
-  return <a className="brand" href="#" aria-label="Zanes İletişim ana sayfa"><ZMark /><span>Zanes İletişim</span></a>;
-}
-
-function Header() {
-  return <header className="header">
-    <div className="wrap header-inner">
-      <Brand />
-      <nav className="nav" aria-label="Ana gezinme">{navigation.map(([href, label]) => <a key={href} href={href}>{label}</a>)}</nav>
-      <a className="call" href={contact.phoneHref}><Icon name="phone" /><span className="call-long">{contact.phone}</span><span className="call-short">Ara</span></a>
-    </div>
-  </header>;
+// Details Vault "Arrow Shift Button": a glass pill whose arrow leaves right while another enters left.
+function GlassButton({href, children, className = ''}) {
+  return <a className={`button-05 ${className}`} href={href}>
+    <span className="glass" aria-hidden="true" />
+    <span className="content"><span className="copy">{children}</span></span>
+  </a>;
 }
 
 const geoMessages = {
@@ -51,181 +47,195 @@ function useNearestStore() {
   return {nearestId:geo.state === 'done' ? geo.id : null, busy:geo.state === 'loading', message, locate};
 }
 
-// The hero is a live panorama of the Bosphorus: its sky and store signals follow the Istanbul clock.
-function Hero({finder, now}) {
-  const ref = useRef(null);
-  const onScreen = useOnScreen(ref);
-  return <section ref={ref} className={`hero${onScreen ? '' : ' is-offscreen'}`} data-phase={skyPhase(now)} aria-labelledby="hero-title">
-    <Stars />
-    <div className="wrap hero-grid">
-      <h1 id="hero-title"><span>İki yaka,</span> <span>altı mağaza.</span></h1>
-      <div className="hero-side">
-        <p className="lede">Zanes İletişim bir Vodafone Business Partner. Telefon, aksesuar ve tüm Vodafone işlemleriniz için size en yakın mağazamıza uğrayın.</p>
-        <div className="actions">
-          <a className="btn btn-primary" href="#magazalar" onClick={finder.locate} aria-busy={finder.busy}><Icon name="locate" />En yakın mağazayı bul</a>
-          <a className="btn" href={contact.phoneHref}><Icon name="phone" />Bizi arayın</a>
-        </div>
-        <p className="geo-message" role="status">{finder.message}</p>
-      </div>
-    </div>
-    <Scene now={now} nearestId={finder.nearestId} />
-  </section>;
-}
-
-function Station({store, index, now, nearest}) {
-  const status = now === null ? null : storeStatus(store, now);
-  return <li className={`station${nearest ? ' is-nearest' : ''}`} id={`magaza-${store.id}`} tabIndex={-1} style={{'--i':index}}>
-    <span className="marker" aria-hidden="true" />
-    <h3>{store.short}</h3>
-    {nearest && <span className="nearest-tag">Size en yakın</span>}
-    <p className={`status${status ? (status.open ? ' is-open' : ' is-closed') : ''}`}>{status ? status.text : ' '}</p>
-    <p className="hours">{store.open} – {store.close}</p>
-    <address>{store.street}<br />{store.area}</address>
-    <a className="directions" href={`https://www.google.com/maps/dir/?api=1&destination=${store.maps}`} target="_blank" rel="noopener noreferrer" aria-label={`${store.name} için yol tarifi (yeni sekmede açılır)`}>Yol tarifi<Icon name="external" /></a>
-  </li>;
-}
-
-// Departure-board digits; the digits live in CSS so the caption still reads as plain text.
-function Flaps({digits}) {
-  const tile = i => <b key={`${i}${digits[i]}`} data-d={digits[i]} />;
-  return <span className="flaps" aria-hidden="true">{tile(0)}{tile(1)}<i />{tile(2)}{tile(3)}</span>;
-}
-
-const clamp = value => Math.min(1, Math.max(0, value));
-
-// Scrolling drives a train along the line; each station pings as the train passes it.
-function useLineTrain(hatRef) {
+// The eyebrow rolls through the store names while the hero is on screen.
+function useTicker(active) {
+  const [tick, setTick] = useState({i:0, animate:true});
   useEffect(() => {
-    const hat = hatRef.current, train = hat.querySelector('.hat-train');
-    if (prefersReducedMotion()) return undefined;
-    const vertical = matchMedia('(max-width:1179px)');
-    let previous = null, queued = false;
-    const ping = station => { station.classList.remove('ping'); void station.offsetWidth; station.classList.add('ping'); setTimeout(() => station.classList.remove('ping'), 1000); };
-    const update = () => {
-      queued = false;
-      const box = hat.getBoundingClientRect(), vh = innerHeight;
-      const stations = [...hat.querySelectorAll('.station')];
-      const marks = stations.map(station => { const m = station.querySelector('.marker').getBoundingClientRect(); return vertical.matches ? m.top + m.height / 2 - box.top : m.left + m.width / 2 - box.left; });
-      let front;
-      if (vertical.matches) {
-        // Keep the whole train on the visible rail: just past the first stop, above the fade at the bottom.
-        const first = marks[0] + 70, last = Math.max(first, box.height - 150);
-        front = first + clamp((vh * .55 - box.top) / box.height) * (last - first);
-        train.style.setProperty('--ty', `${(front - 13).toFixed(1)}px`);
-      } else {
-        const x = -110 + clamp((vh * .92 - box.top) / (vh * .62)) * (box.width + 10);
-        train.style.setProperty('--tx', `${x.toFixed(1)}px`);
-        front = x + 96;
-      }
-      if (previous !== null) marks.forEach((mark, i) => { if ((previous < mark && front >= mark) || (previous > mark && front <= mark)) ping(stations[i]); });
-      previous = front;
-    };
-    const queue = () => { if (!queued) { queued = true; requestAnimationFrame(update); } };
-    update();
-    addEventListener('scroll', queue, {passive:true});
-    addEventListener('resize', queue);
-    return () => { removeEventListener('scroll', queue); removeEventListener('resize', queue); };
-  }, [hatRef]);
+    if (!active || prefersReducedMotion()) return undefined;
+    const timer = setInterval(() => setTick(t => ({i:t.i + 1, animate:true})), 2600);
+    return () => clearInterval(timer);
+  }, [active]);
+  useEffect(() => {
+    if (tick.i < stores.length) return undefined;
+    // After the copy of the first name has rolled in, jump back to the real first name unseen.
+    const timer = setTimeout(() => setTick({i:0, animate:false}), 600);
+    return () => clearTimeout(timer);
+  }, [tick.i]);
+  return tick;
 }
 
-function Line({nearestId, now}) {
-  const hatRef = useRef(null);
-  useLineTrain(hatRef);
-  const digits = now === null ? null : clockDigits(now);
-  return <section className="lines" id="magazalar" aria-labelledby="stores-title">
-    <div className="wrap">
-      <h2 id="stores-title" className="sr-only">Mağazalarımız</h2>
-      <p className="hat-caption">{digits === null ? 'Mağazalarımız ve çalışma saatleri' : <>
-        <span>İstanbul’da saat</span>{' '}<Flaps digits={digits} /><span className="sr-only">{`${digits.slice(0, 2)}:${digits.slice(2)}.`}</span>{' '}<span>{openSummary(now)}</span>
-      </>}</p>
-      <div className="hat" ref={hatRef}>
-        {sides.map(side => {
-          const group = stores.filter(store => store.side === side.id);
-          return <React.Fragment key={side.id}>
-            {side.id === 'anadolu' && <div className="strait" aria-hidden="true"><span>İstanbul Boğazı</span></div>}
-            <div className={`yaka ${side.id}`}>
-              <p className="yaka-name" id={`yaka-${side.id}`}>{side.label}</p>
-              <ol aria-labelledby={`yaka-${side.id}`} style={{'--n':group.length}}>
-                {group.map(store => <Station key={store.id} store={store} index={stores.indexOf(store)} now={now} nearest={store.id === nearestId} />)}
-              </ol>
-            </div>
-          </React.Fragment>;
-        })}
-        <svg className="hat-train" viewBox="-38 -9 76 18" aria-hidden="true" focusable="false"><use href="#train-sym" x="-38" y="-9" width="76" height="18" /></svg>
+function Birds({className}) {
+  return <svg className={`birds ${className}`} viewBox="0 0 1400 800" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+    {['M980 110q5-5 10 0q5-5 10 0', 'M1030 140q4-4 8 0q4-4 8 0', 'M900 170q5-5 10 0q5-5 10 0', 'M1120 92q4-4 8 0q4-4 8 0', 'M820 120q4-4 8 0q4-4 8 0'].map(d => <path key={d} d={d} />)}
+  </svg>;
+}
+
+// A small plane flies in once and parks, towing a paper banner.
+function Plane() {
+  return <div className="plane" aria-hidden="true">
+    <span className="banner">25 yıldır İstanbul’da</span><span className="rope" />
+    <svg viewBox="0 0 54 22" aria-hidden="true" focusable="false">
+      <path d="M4 11Q8 7 20 7L40 7Q50 8 52 11Q50 14 40 15L20 15Q8 15 4 11Z" fill="#ecebe6" />
+      <path d="M22 7 30 1 34 1 30 7ZM22 15 30 21 34 21 30 15Z" fill="#d6d4cd" />
+      <path d="M4 11 1 4 6 4 10 8Z" fill="#d6d4cd" />
+      <rect x="42" y="9" width="6" height="2.4" rx="1" fill="#3a3a3a" />
+      <path d="M14 11h22" stroke="#e60000" strokeWidth="1.6" />
+    </svg>
+  </div>;
+}
+
+function Hero({finder}) {
+  const ref = useRef(null), clouds = useRef(null), tower = useRef(null);
+  const onScreen = useOnScreen(ref);
+  const tick = useTicker(onScreen);
+  useHalftone(clouds, drawClouds(7), {cell:4.2, ink:'#fff4ee', max:.64});
+  useHalftone(tower, drawTower, {cell:3, ink:'#1d0606', max:.62});
+  return <section ref={ref} className="hero grain" aria-labelledby="hero-title">
+    <canvas ref={clouds} className="hero-clouds" aria-hidden="true" />
+    <canvas ref={tower} className="hero-tower" aria-hidden="true" />
+    <Birds className="hero-birds" />
+    <Plane />
+    <div className="wrap hero-body">
+      <div className="hero-copy">
+        <div className="eyebrow" aria-hidden="true">
+          <Icon name="pin" />
+          <span className="ticker"><span className="ticker-list" style={{transform:`translateY(${-1.5 * tick.i}em)`, transition:tick.animate ? undefined : 'none'}}>
+            {[...stores, stores[0]].map((store, i) => <span key={i}>{store.short}</span>)}
+          </span></span>
+        </div>
+        <h1 id="hero-title">Telefon, hat ve fatura. Hepsi tek adreste.</h1>
+        <div className="hero-side">
+          <p className="lede">İstanbul’un iki yakasında altı mağaza. Vodafone Business Partner.</p>
+          <div className="actions">
+            <a className="btn btn-primary btn-cta" href="#magazalar" onClick={finder.locate} aria-busy={finder.busy}>En yakın mağaza<Icon name={finder.busy ? 'locate' : 'arrowDown'} /></a>
+            <GlassButton href={contact.phoneHref} className="hero-call">Bizi arayın</GlassButton>
+          </div>
+          <p className="geo-message" role="status">{finder.message}</p>
+        </div>
       </div>
     </div>
   </section>;
 }
 
 const services = [
-  ['Telefon', '5G uyumlu telefonları nakit ya da temlikli, yani Vodafone faturanıza taksitli olarak alın.'],
-  ['Aksesuar', 'Kılıf, ekran koruyucu, şarj aleti ve kulaklık. Arıza oranı düşük ürünleri seçiyoruz.'],
-  ['Vodafone işlemleri', 'Yeni hat, numara taşıma, ev interneti ve fatura işlemleri. Mağazaya uğrayın ya da önce bizi arayın.'],
+  {title:'Telefon', art:'phone', tag:'Nakit ya da temlikli', text:'5G uyumlu telefonları nakit ya da temlikli, yani Vodafone faturanıza taksitli olarak alın.'},
+  {title:'Aksesuar', art:'headphones', tag:'Seçilmiş ürünler', text:'Kılıf, ekran koruyucu, şarj aleti ve kulaklık. Arıza oranı düşük ürünleri seçiyoruz.'},
+  {title:'Vodafone işlemleri', art:'sim', tag:'Hat, taşıma, fatura', text:'Yeni hat, numara taşıma, ev interneti ve fatura işlemleri. Mağazaya uğrayın ya da önce bizi arayın.'},
 ];
 
-function Service({title, text}) {
+function ServiceCard({service}) {
   const ref = useRef(null);
-  const revealed = useRevealed(ref);
-  const Art = serviceArt[title];
-  return <li ref={ref} className={revealed ? 'in-view' : undefined}><div><h3>{title}</h3><p>{text}</p></div><Art /></li>;
+  useHalftone(ref, drawCardArt(service.art), {cell:3.6, ink:'#fff4ee', max:.62});
+  return <li className="card">
+    <div className="card-art grain"><canvas ref={ref} aria-hidden="true" /><span className="banner">{service.tag}</span></div>
+    <h3>{service.title}</h3>
+    <p>{service.text}</p>
+  </li>;
 }
 
 function Services() {
   return <section className="section services" id="hizmetler" aria-labelledby="services-title">
-    <div className="wrap split">
-      <h2 id="services-title">Mağazada neler var?</h2>
-      <ul className="service-list">{services.map(([title, text]) => <Service key={title} title={title} text={text} />)}</ul>
-    </div>
-  </section>;
-}
-
-function About() {
-  const ref = useRef(null);
-  const revealed = useRevealed(ref);
-  return <section ref={ref} className={`section about${revealed ? ' in-view' : ''}`} id="hakkimizda" aria-labelledby="about-title">
-    <div className="wrap about-grid">
-      <div>
-        <h2 id="about-title" className="statement">Çeyrek asırdır İstanbul’da telefon ve hat işindeyiz.</h2>
-        <p className="about-note">Zanes İletişim, 25 yıllık sektör deneyimine sahip bir Vodafone Business Partner. Avrupa Yakası’nda dört, Anadolu Yakası’nda iki mağazamız var.</p>
+    <div className="wrap">
+      <div className="sec-head">
+        <div><p className="kicker">Hizmetler</p><h2 id="services-title">Mağazada neler var?</h2></div>
+        <p className="sec-lede">Çeyrek asırdır İstanbul’da telefon ve hat işindeyiz. Zanes İletişim bir Vodafone Business Partner.</p>
       </div>
-      <Metro25 />
+      <ul className="cards">{services.map(service => <ServiceCard key={service.title} service={service} />)}</ul>
     </div>
   </section>;
 }
 
-// The number rolls in like a counter; the plain number stays in the link for crawlers and no-JS visitors.
-function PhoneCounter({phone}) {
-  let column = 0;
-  return <>
-    <span className="phone-text">{phone}</span>
-    <span className="odo-row" aria-hidden="true">{[...phone].map((char, i) => char === ' '
-      ? <span key={i} className="odo-gap" />
-      : <span key={i} className="odo"><span className="odo-strip" style={{'--d':10 + Number(char), '--k':column++}} /></span>)}</span>
-  </>;
+function Station({store, index, now, nearest, hot, onHot}) {
+  const status = now === null ? null : storeStatus(store, now);
+  return <li className={`station${nearest ? ' is-nearest' : ''}${hot ? ' is-hot' : ''}`} id={`magaza-${store.id}`} tabIndex={-1}
+    onPointerEnter={() => onHot(store.id)} onPointerLeave={() => onHot(null)}>
+    <span className="n" aria-hidden="true">{index + 1}</span>
+    <h3>{store.short}{nearest && <span className="nearest-tag">Size en yakın</span>}</h3>
+    <div className="store-meta">
+      <p className={`status${status ? (status.open ? ' is-open' : ' is-closed') : ''}`}>{status ? status.text : ' '}</p>
+      <p className="hours">{store.open} – {store.close}</p>
+    </div>
+    <address>{store.street}, {store.area}</address>
+    <a className="directions" href={mapsUrl(store)} target="_blank" rel="noopener noreferrer" aria-label={`${store.name} için yol tarifi (yeni sekmede açılır)`}><Icon name="external" /><span>Yol tarifi</span></a>
+  </li>;
+}
+
+function Stores({nearestId, now}) {
+  const [hotId, setHotId] = useState(null);
+  const mapRef = useRef(null);
+  // The visible map window comes from CSS (--map-x/--map-w), so narrow phones zoom in on the stores.
+  useHalftone(mapRef, (o, w, h) => drawMap(o, w, h, mapWindow(mapRef.current.parentElement)), {cell:5.5, ink:'#e60000', max:.62});
+  const digits = now === null ? null : clockDigits(now);
+  return <section className="section stores" id="magazalar" aria-labelledby="stores-title">
+    <div className="wrap sec-head">
+      <div><p className="kicker">Mağazalar</p><h2 id="stores-title">İki yaka, altı mağaza.</h2></div>
+      <p className="sec-lede stores-caption">{digits === null
+        ? 'Avrupa Yakası’nda dört, Anadolu Yakası’nda iki mağazamız var.'
+        : `İstanbul’da saat ${digits.slice(0, 2)}:${digits.slice(2)}. ${openSummary(now)}`}</p>
+    </div>
+    <div className="slab stores-panel grain">
+      <div className="stores-grid">
+        <div className="store-lists">
+          {sides.map(side => <div className="side" key={side.id}>
+            <p className="side-name" id={`yaka-${side.id}`}>{side.label}</p>
+            <ol aria-labelledby={`yaka-${side.id}`}>
+              {stores.filter(store => store.side === side.id).map(store => <Station key={store.id} store={store} index={stores.indexOf(store)} now={now}
+                nearest={store.id === nearestId} hot={store.id === hotId} onHot={setHotId} />)}
+            </ol>
+          </div>)}
+        </div>
+        <div className="map">
+          <canvas ref={mapRef} aria-hidden="true" />
+          <span className="water" style={{left:'52%', top:'3%'}} aria-hidden="true">Karadeniz</span>
+          <span className="water" style={{left:'6%', top:'88%'}} aria-hidden="true">Marmara Denizi</span>
+          {stores.map((store, i) => {
+            const closed = now !== null && !storeStatus(store, now).open;
+            return <a key={store.id} className={`pin${closed ? ' is-closed' : ''}${store.id === nearestId ? ' is-nearest' : ''}${store.id === hotId ? ' is-hot' : ''}`}
+              style={{'--mx':store.mx, '--my':store.my}}
+              href={mapsUrl(store)} target="_blank" rel="noopener noreferrer" aria-label={`${store.name} haritada, yol tarifi (yeni sekmede açılır)`}
+              onPointerEnter={() => setHotId(store.id)} onPointerLeave={() => setHotId(null)}>{i + 1}</a>;
+          })}
+        </div>
+      </div>
+    </div>
+  </section>;
 }
 
 function Contact() {
   const ref = useRef(null);
-  const revealed = useRevealed(ref);
-  return <section ref={ref} className={`section contact${revealed ? ' in-view' : ''}`} id="iletisim" aria-labelledby="contact-title">
-    <svg className="signal" viewBox="0 0 1400 800" preserveAspectRatio="xMaxYMid slice" aria-hidden="true" focusable="false">{[0, 1, 2, 3].map(i => <circle key={i} cx="1180" cy="400" r="900" />)}</svg>
-    <div className="wrap">
+  useHalftone(ref, drawClouds(21), {cell:4.2, ink:'#fff4ee', max:.64});
+  return <section className="slab contact grain" id="iletisim" aria-labelledby="contact-title">
+    <canvas ref={ref} className="contact-clouds" aria-hidden="true" />
+    <Birds className="contact-birds" />
+    <div className="contact-inner">
       <h2 id="contact-title">Arayın, yardımcı olalım.</h2>
-      <a className="big-phone" href={contact.phoneHref} aria-label={`${contact.phone} numarasını arayın`}><PhoneCounter phone={contact.phone} /></a>
-      <dl className="contact-meta">
-        <div><dt>E-posta</dt><dd><a href={`mailto:${contact.email}`}>{contact.email}</a></dd></div>
-        <div><dt>Adres</dt><dd>{contact.address[0]}<br />{contact.address[1]}</dd></div>
-      </dl>
+      <p className="contact-lede">Telefon, hat ya da fatura: mağazaya gelmeden önce arayın, sorunuza birlikte bakalım.</p>
+      <div className="actions">
+        <a className="btn btn-cta big-phone" href={contact.phoneHref} aria-label={`${contact.phone} numarasını arayın`}><Icon name="phone" />{contact.phone}</a>
+        <GlassButton href={`mailto:${contact.email}`}>{contact.email}</GlassButton>
+      </div>
+      <p className="contact-address">{contact.address[0]}, {contact.address[1]}</p>
     </div>
   </section>;
 }
 
 function Footer() {
   return <footer className="footer">
-    <div className="wrap footer-inner">
-      <Brand />
-      <p>Teknolojiye güvenle ulaşın.</p>
-      <p className="footer-legal">© 2026 Zanes İletişim. Tüm hakları saklıdır.</p>
+    <div className="wrap">
+      <div className="foot-top">
+        <div className="foot-brand">
+          <a className="brand" href="#" aria-label="Zanes İletişim ana sayfa"><ZMark /><span>Zanes İletişim</span></a>
+          <p>Teknolojiye güvenle ulaşın.</p>
+        </div>
+        <div className="foot-cols">
+          {sides.map(side => <div key={side.id}><p className="foot-h">{side.label}</p><ul>
+            {stores.filter(store => store.side === side.id).map(store => <li key={store.id}><a href={mapsUrl(store)} target="_blank" rel="noopener noreferrer">{store.short}</a></li>)}
+          </ul></div>)}
+          <div><p className="foot-h">İletişim</p><ul><li><a href={contact.phoneHref}>{contact.phone}</a></li><li>Mecidiyeköy, Şişli</li></ul></div>
+          <div><p className="foot-h">Sayfa</p><ul>{sections.map(([href, label]) => <li key={href}><a href={href}>{label}</a></li>)}</ul></div>
+        </div>
+      </div>
+      <p className="footer-legal">© 2026 Zanes İletişim. Tüm hakları saklıdır. Vodafone Business Partner.</p>
     </div>
   </footer>;
 }
@@ -233,17 +243,16 @@ function Footer() {
 export default function App() {
   const finder = useNearestStore();
   const now = useIstanbulMinutes();
-  // SMIL loops (cable pulse, metro cars) are not covered by the CSS reduced-motion rule.
+  // SMIL loops are not covered by the CSS reduced-motion rule.
   useEffect(() => { if (prefersReducedMotion()) document.querySelectorAll('svg').forEach(svg => svg.pauseAnimations?.()); }, []);
   return <>
     <TrainSprite />
     <a className="skip" href="#ana-icerik">İçeriğe geç</a>
-    <Header />
+    <Nav />
     <main id="ana-icerik" tabIndex={-1}>
-      <Hero finder={finder} now={now} />
-      <Line nearestId={finder.nearestId} now={now} />
+      <Hero finder={finder} />
       <Services />
-      <About />
+      <Stores nearestId={finder.nearestId} now={now} />
       <Feedback />
       <Contact />
     </main>

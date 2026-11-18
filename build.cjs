@@ -14,6 +14,27 @@ const {renderToString} = require('react-dom/server');
     fs.copyFileSync(path.join(__dirname, file), path.join(dist, file));
   }
 
+  const assetUrl = file => '/' + path.relative(dist, path.resolve(__dirname, file)).split(path.sep).join('/');
+
+  // The 3D phone of the feedback section (three.js) is built first, as an ES module of its own. The page's script stays
+  // the one classic deferred bundle it always was: it only knows the phone's fingerprinted URL and fetches it with
+  // import() when that section comes near (src/Feedback.jsx), so the first page load carries no three.js.
+  const phone = await esbuild.build({
+    absWorkingDir: __dirname,
+    entryPoints: {phone3d: 'src/phone3d.js'},
+    outdir: 'dist',
+    entryNames: 'assets/[name]-[hash]',
+    format: 'esm',
+    bundle: true,
+    minify: true,
+    metafile: true,
+    sourcemap: false,
+    define: {'process.env.NODE_ENV': '"production"'},
+    logLevel: 'info',
+  });
+  const phoneJs = assetUrl(Object.keys(phone.metafile.outputs)[0]);
+  const onDemandPhone = {name: 'on-demand-phone', setup(build) { build.onResolve({filter: /\/phone3d\.js$/}, () => ({path: phoneJs, external: true})); }};
+
   const client = await esbuild.build({
     absWorkingDir: __dirname,
     entryPoints: {app: 'src/main.jsx'},
@@ -21,6 +42,7 @@ const {renderToString} = require('react-dom/server');
     entryNames: 'assets/[name]-[hash]',
     bundle: true,
     external: ['/assets/*'],
+    plugins: [onDemandPhone],
     minify: true,
     metafile: true,
     sourcemap: false,
@@ -37,12 +59,12 @@ const {renderToString} = require('react-dom/server');
     format: 'cjs',
     bundle: true,
     external: ['react', 'react-dom'],
+    plugins: [onDemandPhone],
     define: {'process.env.NODE_ENV': '"production"'},
   });
   const App = require('./.build/app.cjs').default;
   const rendered = renderToString(React.createElement(App));
   const [jsPath, jsMetadata] = Object.entries(client.metafile.outputs).find(([,meta]) => meta.entryPoint === 'src/main.jsx');
-  const assetUrl = file => '/' + path.relative(dist, path.resolve(__dirname, file)).split(path.sep).join('/');
   const js = assetUrl(jsPath);
   const css = assetUrl(jsMetadata.cssBundle);
   const template = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8');
@@ -60,6 +82,8 @@ const {renderToString} = require('react-dom/server');
     js,
     '  Cache-Control: public, max-age=31536000, immutable',
     css,
+    '  Cache-Control: public, max-age=31536000, immutable',
+    phoneJs,
     '  Cache-Control: public, max-age=31536000, immutable',
     '',
   ].join(String.fromCharCode(10));

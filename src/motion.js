@@ -8,7 +8,8 @@ export function useRevealed(ref, threshold = .3) {
   useEffect(() => {
     const element = ref.current;
     if (!element || !('IntersectionObserver' in window)) { setRevealed(true); return undefined; }
-    const observer = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) { setRevealed(true); observer.disconnect(); } }, {threshold});
+    // A scroll right after observing can deliver two entries at once; any of them may be the one that counts.
+    const observer = new IntersectionObserver(entries => { if (entries.some(entry => entry.isIntersecting)) { setRevealed(true); observer.disconnect(); } }, {threshold});
     observer.observe(element);
     return () => observer.disconnect();
   }, [ref, threshold]);
@@ -21,7 +22,7 @@ export function useOnScreen(ref) {
   useEffect(() => {
     const element = ref.current;
     if (!element || !('IntersectionObserver' in window)) return undefined;
-    const observer = new IntersectionObserver(([entry]) => setOnScreen(entry.isIntersecting));
+    const observer = new IntersectionObserver(entries => setOnScreen(entries[entries.length - 1].isIntersecting));
     observer.observe(element);
     return () => observer.disconnect();
   }, [ref]);

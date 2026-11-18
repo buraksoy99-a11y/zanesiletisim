@@ -236,7 +236,8 @@ h1{margin-top:16px;max-width:12.5ch;font-size:clamp(42px,6.3vw,88px);line-height
 /* Feedback: a face that reacts to the rating, beside a short form laid out as a line of stops. */
 .feedback{--btn-bg:#000;--btn-fg:#fff;--btn-hover:var(--stone);overflow-x:clip}
 .fb-note{max-width:40ch;margin-top:clamp(16px,2vw,24px);font-size:clamp(18px,1.45vw,21px);color:var(--gray)}
-.fb-face{display:block;width:min(100%,380px);height:auto;margin-top:clamp(28px,3.4vw,48px);overflow:visible}
+.fb-face{position:relative;width:min(100%,380px);margin-top:clamp(28px,3.4vw,48px)}
+.fb-face-svg{display:block;width:100%;height:auto;overflow:visible}
 .fb-head{fill:#fff;stroke:#000;stroke-width:12;stroke-dasharray:1}
 .fb-brow{fill:none;stroke:#000;stroke-width:9;stroke-linecap:round}
 .fb-eye{fill:#000;transform-box:fill-box;transform-origin:center;animation:eye-blink 5.4s ease-in-out infinite}
@@ -259,6 +260,15 @@ h1{margin-top:16px;max-width:12.5ch;font-size:clamp(42px,6.3vw,88px);line-height
 .fb-burst .p2{fill:none;stroke:var(--red);stroke-width:3}
 .fb-hearts path{fill:var(--red);transform-box:fill-box;transform-origin:center;opacity:0;animation:float-up 2.4s ease-out forwards;animation-delay:calc(.4s + var(--k) * .25s)}
 .fb-face.is-offscreen *{animation-play-state:paused!important}
+/* The 3D phone (src/phone3d.js) is drawn on a canvas over the SVG face once WebGL has produced a frame; until then, and
+   without WebGL or JavaScript, the SVG face is the whole thing. The canvas is larger than its box so confetti, hearts
+   and the cloud have room; it never takes a click. */
+.fb-phone{position:absolute;top:-44px;left:-36px;width:calc(100% + 84px);height:calc(100% + 76px);pointer-events:none;opacity:0;visibility:hidden;transition:opacity .45s ease}
+/* The phone's box is taken as soon as a GPU is confirmed (has-gpu), before three.js arrives, so nothing moves later. */
+.fb-face.has-gpu{aspect-ratio:380/440}
+.fb-face.is-3d .fb-phone{opacity:1;visibility:visible}
+/* Hidden with display:none so none of the SVG's animations keep running under the phone. */
+.fb-face.is-3d .fb-face-svg{position:absolute;top:0;left:0;display:none;opacity:0;transition:opacity .3s ease,display .3s allow-discrete}
 /* With JavaScript the face draws itself once seen; without it, it is simply there. */
 .js .fb-head{stroke-dashoffset:1}
 .js .fb-features{opacity:0}
@@ -415,6 +425,9 @@ legend.fb-q{animation:appear .4s ease}
   .split{grid-template-columns:minmax(0,1fr)}
   .fb-intro{position:static}
   .fb-face{width:min(62vw,250px)}
+  .fb-face.has-gpu{width:min(100%,360px);aspect-ratio:360/340}
+  .fb-face.has-gpu .fb-face-svg{width:min(62vw,250px)}
+  .fb-phone{left:-16px;width:calc(100% + 32px)}
 }
 @media (max-width:640px){
   :root{--inset:8px}

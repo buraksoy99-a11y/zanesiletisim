@@ -24,16 +24,81 @@ const burstPieces = Array.from({length:18}, (_, i) => {
   return {x:Math.round(Math.cos(angle) * distance), y:Math.round(Math.sin(angle) * distance), r:(i % 2 ? 1 : -1) * (120 + i * 17), kind:i % 3};
 });
 const HEART = 'M0 4C0-2-9-2-9 4C-9 9 0 13 0 16C0 13 9 9 9 4C9-2 0-2 0 4Z';
+// The 3D phone needs a real GPU. A software renderer (SwiftShader, llvmpipe, WARP…) freezes the page for a moment when
+// the phone first shows and stutters afterwards, so it counts as "no WebGL": the browser is asked not to hand one out,
+// and the renderer's name is checked as well. Those visitors keep the light SVG face.
+const PHONE_GL = {alpha:true, antialias:true, depth:true, stencil:false, premultipliedAlpha:true, failIfMajorPerformanceCaveat:true};
+const SOFTWARE_GL = /swiftshader|llvmpipe|softpipe|software|basic render/i;
+function softwareGL(gl) {
+  let name = String(gl.getParameter(gl.RENDERER));
+  // Chromium and WebKit mask the name; the real one is behind an extension (Firefox answers directly).
+  if (name === 'WebKit WebGL') {
+    const info = gl.getExtension('WEBGL_debug_renderer_info');
+    if (info) name = String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL));
+  }
+  return SOFTWARE_GL.test(name);
+}
 
+// The SVG face is what the server prints and what stays without JavaScript or WebGL. Where WebGL works, the same face
+// is shown on a 3D phone (src/phone3d.js, a separate chunk) drawn on a canvas over it. The wrapper keeps data-mood.
 function Face({mood, burst, wink, hearts}) {
-  const svgRef = useRef(null);
+  const faceRef = useRef(null), canvasRef = useRef(null), phone = useRef(null);
   const shape = useRef(faces.idle);
-  const revealed = useRevealed(svgRef, .4);
-  const onScreen = useOnScreen(svgRef);
+  const revealed = useRevealed(faceRef, .4);
+  const onScreen = useOnScreen(faceRef);
+  const [wanted, setWanted] = useState(false);
+  const [live, setLive] = useState(false);
+  // True once a GPU context exists: the phone's taller box is reserved then, while the section is usually still out of
+  // view, so the form below does not jump when the phone's first frame arrives later.
+  const [gpu, setGpu] = useState(false);
+  // True once the SVG face is final for this visit (no WebGL, software renderer, chunk or context lost).
+  const [declined, setDeclined] = useState(false);
+  const latest = useRef(null);
+
+  useEffect(() => {
+    latest.current = {mood, burst, wink, hearts, revealed, onScreen};
+    if (phone.current) phone.current.update(latest.current);
+  }, [mood, burst, wink, hearts, revealed, onScreen]);
+
+  // three.js is asked for when the section comes near, never during page load.
+  useEffect(() => {
+    if (!('IntersectionObserver' in window) || !('ResizeObserver' in window) || !('WebGL2RenderingContext' in window)) { setDeclined(true); return undefined; }
+    const observer = new IntersectionObserver(entries => { if (entries.some(entry => entry.isIntersecting)) { observer.disconnect(); setWanted(true); } }, {rootMargin:'150% 0px'});
+    observer.observe(faceRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  // WebGL is tried here, on the real canvas, before three.js is even fetched: no usable context, no download, no console
+  // noise. Any failure (no context, software renderer, chunk not loaded, context lost later) takes the canvas away and
+  // the SVG face carries on.
+  useEffect(() => {
+    if (!wanted) return undefined;
+    const canvas = canvasRef.current;
+    let stopped = false, gl = null;
+    const giveUp = () => {
+      if (stopped) return;
+      stopped = true;
+      phone.current = null;
+      if (gl && !gl.isContextLost()) gl.getExtension('WEBGL_lose_context')?.loseContext();
+      setDeclined(true);
+      setGpu(false);
+      setLive(false);
+      setWanted(false);
+    };
+    try { gl = canvas.getContext('webgl2', PHONE_GL); } catch { gl = null; }
+    if (!gl || gl.isContextLost() || softwareGL(gl)) { giveUp(); return undefined; }
+    setGpu(true);
+    import('./phone3d.js').then(({createPhone}) => {
+      if (stopped) return;
+      const created = createPhone({canvas, gl, host:faceRef.current, faces, props:latest.current, onReady:() => setLive(true), onFail:giveUp});
+      if (stopped) created.dispose(); else phone.current = created;
+    }).catch(giveUp);
+    return () => { stopped = true; if (phone.current) phone.current.dispose(); phone.current = null; };
+  }, [wanted]);
 
   // Morph to the new mood with a slight overshoot; attributes are written directly, not re-rendered per frame.
   useEffect(() => {
-    const svg = svgRef.current;
+    const svg = faceRef.current;
     const [browL, browR] = svg.querySelectorAll('.fb-brow'), eyes = svg.querySelectorAll('.fb-eye'), cheeks = svg.querySelectorAll('.fb-cheek'), mouth = svg.querySelector('.fb-mouth');
     const apply = f => {
       mouth.setAttribute('d', mouthPath(f));
@@ -57,10 +122,10 @@ function Face({mood, burst, wink, hearts}) {
     return () => cancelAnimationFrame(raf);
   }, [mood]);
 
-  // Mouse users are watched: the eyes follow the pointer while the face is on screen.
+  // Mouse users are watched: the eyes follow the pointer while the face is on screen (the phone does its own watching).
   useEffect(() => {
-    if (!onScreen || prefersReducedMotion() || !matchMedia('(hover:hover)').matches) return undefined;
-    const svg = svgRef.current, eyes = svg.querySelector('.fb-eyes');
+    if (live || !onScreen || prefersReducedMotion() || !matchMedia('(hover:hover)').matches) return undefined;
+    const svg = faceRef.current.querySelector('svg'), eyes = svg.querySelector('.fb-eyes');
     let raf = 0, x = 0, y = 0;
     const look = () => {
       raf = 0;
@@ -72,31 +137,35 @@ function Face({mood, burst, wink, hearts}) {
     const move = event => { x = event.clientX; y = event.clientY; if (!raf) raf = requestAnimationFrame(look); };
     addEventListener('pointermove', move, {passive:true});
     return () => { removeEventListener('pointermove', move); cancelAnimationFrame(raf); };
-  }, [onScreen]);
+  }, [onScreen, live]);
 
   const f = faces.idle;
-  return <svg ref={svgRef} className={`fb-face${revealed ? ' in-view' : ''}${onScreen ? '' : ' is-offscreen'}${wink ? ' is-wink' : ''}`} data-mood={mood} viewBox="0 0 320 320" aria-hidden="true" focusable="false">
-    <g className="fb-rings">{[0, 1, 2].map(k => <circle key={k} cx="160" cy="182" r="106" style={{'--k':k}} />)}</g>
-    <g className="fb-cloud"><g className="fb-cloud-body">
-      <g className="fb-rain">{[192, 212, 232, 252].map((x, k) => <line key={x} x1={x} y1="72" x2={x - 4} y2="84" style={{'--k':k}} />)}</g>
-      <path className="fb-cloud-shape" d="M180 62H258A18 18 0 0 0 256 26A26 26 0 0 0 208 20A20 20 0 0 0 180 62Z" />
-    </g></g>
-    <path className="fb-head" pathLength="1" d="M54 182A106 106 0 1 1 266 182A106 106 0 1 1 54 182Z" />
-    <g className="fb-features">
-      <circle className="fb-cheek" cx="98" cy="208" r="14" fillOpacity={f[14]} />
-      <circle className="fb-cheek" cx="222" cy="208" r="14" fillOpacity={f[14]} />
-      <path className="fb-brow" d={browPath(f)} />
-      <path className="fb-brow" d={browPath(f, true)} />
-      <g className="fb-eyes"><ellipse className="fb-eye" cx="124" cy="166" rx="11" ry={f[13]} /><ellipse className="fb-eye" cx="196" cy="166" rx="11" ry={f[13]} /></g>
-      <path className="fb-mouth" d={mouthPath(f)} />
-    </g>
-    {burst > 0 && <g key={burst} className="fb-burst">{burstPieces.map((p, i) => {
-      const style = {'--x':`${p.x}px`, '--y':`${p.y}px`, '--r':`${p.r}deg`};
-      if (p.kind === 0) return <rect key={i} className="p0" x="153" y="179.5" width="14" height="5" rx="2.5" style={style} />;
-      return <circle key={i} className={`p${p.kind}`} cx="160" cy="182" r={p.kind === 1 ? 4 : 5} style={style} />;
-    })}</g>}
-    {hearts && <g className="fb-hearts">{[[118, 74], [160, 58], [202, 74]].map(([x, y], k) => <g key={x} transform={`translate(${x} ${y})`}><path d={HEART} style={{'--k':k}} /></g>)}</g>}
-  </svg>;
+  return <div ref={faceRef} className={`fb-face${revealed ? ' in-view' : ''}${onScreen ? '' : ' is-offscreen'}${wink ? ' is-wink' : ''}${gpu ? ' has-gpu' : ''}${live ? ' is-3d' : ''}`} data-mood={mood}
+    data-phone={live ? '3d' : declined ? 'svg' : wanted ? 'loading' : undefined}>
+    <svg className="fb-face-svg" viewBox="0 0 320 320" aria-hidden="true" focusable="false">
+      <g className="fb-rings">{[0, 1, 2].map(k => <circle key={k} cx="160" cy="182" r="106" style={{'--k':k}} />)}</g>
+      <g className="fb-cloud"><g className="fb-cloud-body">
+        <g className="fb-rain">{[192, 212, 232, 252].map((x, k) => <line key={x} x1={x} y1="72" x2={x - 4} y2="84" style={{'--k':k}} />)}</g>
+        <path className="fb-cloud-shape" d="M180 62H258A18 18 0 0 0 256 26A26 26 0 0 0 208 20A20 20 0 0 0 180 62Z" />
+      </g></g>
+      <path className="fb-head" pathLength="1" d="M54 182A106 106 0 1 1 266 182A106 106 0 1 1 54 182Z" />
+      <g className="fb-features">
+        <circle className="fb-cheek" cx="98" cy="208" r="14" fillOpacity={f[14]} />
+        <circle className="fb-cheek" cx="222" cy="208" r="14" fillOpacity={f[14]} />
+        <path className="fb-brow" d={browPath(f)} />
+        <path className="fb-brow" d={browPath(f, true)} />
+        <g className="fb-eyes"><ellipse className="fb-eye" cx="124" cy="166" rx="11" ry={f[13]} /><ellipse className="fb-eye" cx="196" cy="166" rx="11" ry={f[13]} /></g>
+        <path className="fb-mouth" d={mouthPath(f)} />
+      </g>
+      {burst > 0 && <g key={burst} className="fb-burst">{burstPieces.map((p, i) => {
+        const style = {'--x':`${p.x}px`, '--y':`${p.y}px`, '--r':`${p.r}deg`};
+        if (p.kind === 0) return <rect key={i} className="p0" x="153" y="179.5" width="14" height="5" rx="2.5" style={style} />;
+        return <circle key={i} className={`p${p.kind}`} cx="160" cy="182" r={p.kind === 1 ? 4 : 5} style={style} />;
+      })}</g>}
+      {hearts && <g className="fb-hearts">{[[118, 74], [160, 58], [202, 74]].map(([x, y], k) => <g key={x} transform={`translate(${x} ${y})`}><path d={HEART} style={{'--k':k}} /></g>)}</g>}
+    </svg>
+    {wanted && <canvas ref={canvasRef} className="fb-phone" aria-hidden="true" />}
+  </div>;
 }
 
 const StepNumber = ({n}) => <span className="fb-num" aria-hidden="true"><span>{n}</span><Icon name="check" /></span>;

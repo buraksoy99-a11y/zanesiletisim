@@ -216,7 +216,7 @@ function Nav() {
               {links.map((link, i) => <Preview key={link.href} kind={link.preview} index={i} />)}
             </div>
             <div className="nav-footer" data-enter>
-              <p className="nav-note">Vodafone Business Partner</p>
+              <p className="nav-note">Yetkili Vodafone Mağazası</p>
               <a className="nav-call" href={contact.phoneHref} data-close><Icon name="phone" />{contact.phone}</a>
             </div>
           </div>

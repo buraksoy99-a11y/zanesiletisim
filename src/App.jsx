@@ -103,9 +103,9 @@ function Hero({finder}) {
             {[...stores, stores[0]].map((store, i) => <span key={i}>{store.short}</span>)}
           </span></span>
         </div>
-        <h1 id="hero-title">Telefon, hat ve fatura. Hepsi tek adreste.</h1>
+        <h1 id="hero-title">Telefonunuz da hattınız da bizden.</h1>
         <div className="hero-side">
-          <p className="lede">İstanbul’un iki yakasında altı mağaza. Vodafone Business Partner.</p>
+          <p className="lede">İstanbul’un iki yakasında 6 yetkili Vodafone mağazasıyla hizmetinizdeyiz.</p>
           <div className="actions">
             <a className="btn btn-primary btn-cta" href="#magazalar" onClick={finder.locate} aria-busy={finder.busy}>En yakın mağaza<Icon name={finder.busy ? 'locate' : 'arrowDown'} /></a>
             <GlassButton href={contact.phoneHref} className="hero-call">Bizi arayın</GlassButton>
@@ -118,9 +118,9 @@ function Hero({finder}) {
 }
 
 const services = [
-  {title:'Telefon', art:'phone', tag:'Nakit ya da temlikli', text:'5G uyumlu telefonları nakit ya da temlikli, yani Vodafone faturanıza taksitli olarak alın.'},
-  {title:'Aksesuar', art:'headphones', tag:'Seçilmiş ürünler', text:'Kılıf, ekran koruyucu, şarj aleti ve kulaklık. Arıza oranı düşük ürünleri seçiyoruz.'},
-  {title:'Vodafone işlemleri', art:'sim', tag:'Hat, taşıma, fatura', text:'Yeni hat, numara taşıma, ev interneti ve fatura işlemleri. Mağazaya uğrayın ya da önce bizi arayın.'},
+  {title:'Akıllı telefonlar', art:'phone', tag:'Peşin veya faturaya ek', text:'Güncel 5G uyumlu modelleri peşin ya da Vodafone faturanıza ek taksit seçenekleriyle mağazalarımızda inceleyip alabilirsiniz.'},
+  {title:'Aksesuar', art:'headphones', tag:'Garantili ve sağlam', text:'Telefonunuzu koruyan kılıf ve ekran koruyuculardan hızlı şarj ve kulaklıklara kadar, gönül rahatlığıyla kullanacağınız güvenilir ürünler.'},
+  {title:'Vodafone işlemleri', art:'sim', tag:'Hat, tarife, internet', text:'Yeni hat, numara taşıma, tarife yenileme, ev interneti ve fatura işlemlerinizi uğraşmadan mağazalarımızda halledin.'},
 ];
 
 function ServiceCard({service}) {
@@ -137,8 +137,8 @@ function Services() {
   return <section className="section services" id="hizmetler" aria-labelledby="services-title">
     <div className="wrap">
       <div className="sec-head">
-        <div><p className="kicker">Hizmetler</p><h2 id="services-title">Mağazada neler var?</h2></div>
-        <p className="sec-lede">Çeyrek asırdır İstanbul’da telefon ve hat işindeyiz. Zanes İletişim bir Vodafone Business Partner.</p>
+        <div><p className="kicker">Hizmetler</p><h2 id="services-title">Mağazada neler yapıyoruz?</h2></div>
+        <p className="sec-lede">Yeni telefon almaktan fatura ve hat işlemlerine kadar her konuda yüz yüze destek veriyoruz.</p>
       </div>
       <ul className="cards">{services.map(service => <ServiceCard key={service.title} service={service} />)}</ul>
     </div>
@@ -168,7 +168,7 @@ function Stores({nearestId, now}) {
   const digits = now === null ? null : clockDigits(now);
   return <section className="section stores" id="magazalar" aria-labelledby="stores-title">
     <div className="wrap sec-head">
-      <div><p className="kicker">Mağazalar</p><h2 id="stores-title">İki yaka, altı mağaza.</h2></div>
+      <div><p className="kicker">Mağazalar</p><h2 id="stores-title">İki yakada 6 mağaza.</h2></div>
       <p className="sec-lede stores-caption">{digits === null
         ? 'Avrupa Yakası’nda dört, Anadolu Yakası’nda iki mağazamız var.'
         : `İstanbul’da saat ${digits.slice(0, 2)}:${digits.slice(2)}. ${openSummary(now)}`}</p>
@@ -209,7 +209,7 @@ function Contact() {
     <Birds className="contact-birds" />
     <div className="contact-inner">
       <h2 id="contact-title">Arayın, yardımcı olalım.</h2>
-      <p className="contact-lede">Telefon, hat ya da fatura: mağazaya gelmeden önce arayın, sorunuza birlikte bakalım.</p>
+      <p className="contact-lede">Stok durumu, tarife ya da aklınızdaki herhangi bir soru için mağazaya gelmeden önce bizi arayabilirsiniz.</p>
       <div className="actions">
         <a className="btn btn-cta big-phone" href={contact.phoneHref} aria-label={`${contact.phone} numarasını arayın`}><Icon name="phone" />{contact.phone}</a>
         <GlassButton href={`mailto:${contact.email}`}>{contact.email}</GlassButton>
@@ -225,7 +225,7 @@ function Footer() {
       <div className="foot-top">
         <div className="foot-brand">
           <a className="brand" href="#" aria-label="Zanes İletişim ana sayfa"><ZMark /><span>Zanes İletişim</span></a>
-          <p>Teknolojiye güvenle ulaşın.</p>
+          <p>25 yıldır aynı güvenle.</p>
         </div>
         <div className="foot-cols">
           {sides.map(side => <div key={side.id}><p className="foot-h">{side.label}</p><ul>

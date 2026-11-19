@@ -187,8 +187,8 @@ function Sent({rating, storeId, doneRef, onAgain}) {
       </g>
     </svg>
     <h3 id="fb-done-title" className="fb-thanks"><span className="sr-only">Teşekkürler!</span><span className="flaps fb-flaps" aria-hidden="true">{[...'TEŞEKKÜRLER'].map((ch, k) => <b key={k} data-d={ch} style={{'--k':k}} />)}</span></h3>
-    <p className="fb-done-note">{rating <= 2 ? 'Görüşünüz bize ulaştı. Daha iyisi için çalışacağız.' : 'Görüşünüz bize ulaştı. Yine bekleriz!'}</p>
-    <button className="btn" type="button" onClick={onAgain}>Yeni geribildirim</button>
+    <p className="fb-done-note">{rating <= 2 ? 'Notunuz bize ulaştı. Paylaştığınız için teşekkür ederiz, gereken özeni göstereceğiz.' : 'Görüşünüz bize ulaştı. Yine bekleriz!'}</p>
+    <button className="btn" type="button" onClick={onAgain}>Yeni geri bildirim</button>
   </div>;
 }
 
@@ -244,7 +244,7 @@ export default function Feedback() {
     <div className="wrap split">
       <div className="fb-intro">
         <h2 id="feedback-title">Ziyaretiniz nasıldı?</h2>
-        <p className="fb-note">Mağazamızdaki deneyiminizi birkaç dokunuşla anlatın. İyisini de kötüsünü de duymak istiyoruz.</p>
+        <p className="fb-note">Memnun kaldığınız ya da eksik gördüğünüz her şeyi kısaca yazabilirsiniz. Görüşleriniz doğrudan bize ulaşıyor.</p>
         <Face mood={mood} burst={burst} wink={sent && rating >= 3} hearts={sent && rating >= 4} />
       </div>
       {sent ? <Sent rating={rating} storeId={storeId} doneRef={doneRef} onAgain={again} /> :
@@ -264,7 +264,7 @@ export default function Feedback() {
                 </label>)}
               </div>
               {state === 'missing' && <p className="fb-alert" id="fb-missing" role="alert">Önce bir puan seçin.</p>}
-              {rating !== null && rating <= 2 && <p className="fb-sorry">Üzgünüz. İsterseniz hemen konuşalım: <a href={contact.phoneHref}>{contact.phone}</a></p>}
+              {rating !== null && rating <= 2 && <p className="fb-sorry">Yaşadığınız aksaklık için üzgünüz. Dilerseniz hemen arayın, çözelim: <a href={contact.phoneHref}>{contact.phone}</a></p>}
             </fieldset>
           </li>
           <li className={`fb-step${storeId ? ' is-done' : ''}`}>
